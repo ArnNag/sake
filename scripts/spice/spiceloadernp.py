@@ -29,24 +29,30 @@ class SPICESerializer:
         return test_names, train_names, val_names
 
     def make_npy(self, names, out_path):
-        all_confs = []
+        all_pos = []
         all_atom_nums = []
         all_energies = []
+        all_forces = []
         for name in names:
             atom_nums = jnp.array(self.data[name]['atomic_numbers'], jnp.uint8)
-            if atom_nums.shape[0] > self.max_atom_num:
+            if len(atom_nums) > self.max_atom_num:
+                print("Skipping: ", name)
                 continue
-            conf_arr = self.data[name]['conformations']
+            pos_arr = self.data[name]['conformations']
+            forces_arr = self.data[name]['dft_total_gradient']
             energy_arr = self.data[name]['dft_total_energy']
             all_energies.extend(energy_arr)
-            for conf in conf_arr:
-                padded_conf = jnp.pad(conf, ((0, self.max_atom_num - conf.shape[0]), (0, 0)))
-                padded_atom_nums = jnp.pad(atom_nums, (0, self.max_atom_num - atom_nums.shape[0]))
-                all_confs.append(padded_conf)
+            for conf in range(len(pos_arr)):
+                pad_num = self.max_atom_num - len(atom_nums)
+                padded_pos = jnp.pad(pos_arr[conf], ((0, pad_num), (0, 0)))
+                padded_atom_nums = jnp.pad(atom_nums, (0, pad_num))
+                padded_forces_arr = jnp.pad(forces_arr[conf], ((0, pad_num), (0, 0)))
+                all_pos.append(padded_pos)
                 all_atom_nums.append(padded_atom_nums)
-        jnp.save(out_path + "_confs", jnp.array(all_confs))
+        jnp.save(out_path + "_pos", jnp.array(all_pos))
         jnp.save(out_path + "_atom_nums", jnp.array(all_atom_nums))
         jnp.save(out_path + "_energies", jnp.array(all_energies))
+        jnp.save(out_path + "_forces", jnp.array(all_forces))
 
 
 class SpiceLoader:
@@ -56,7 +62,7 @@ class SpiceLoader:
         self.batch_size = batch_size
         self.train_energies = jnp.load("train_energies.npy", mmap_mode=mmap_mode)
         self.train_atom_nums = jnp.load("train_atom_nums.npy", mmap_mode=mmap_mode)
-        self.train_confs = jnp.load("train_confs.npy", mmap_mode=mmap_mode)
+        self.train_pos = jnp.load("train_pos.npy", mmap_mode=mmap_mode)
 
     def get_epoch(self):
         train_size = len(self.train_energies)
@@ -66,17 +72,17 @@ class SpiceLoader:
             batch_end = (batch_num + 1) * self.batch_size
             batch_idxs = shuffled_idxs[batch_start:batch_end]
             batch_atom_nums = self.train_atom_nums[batch_idxs]
-            batch_confs = self.train_confs[batch_idxs]
+            batch_pos = self.train_pos[batch_idxs]
             batch_energies = self.train_energies[batch_idxs]
-            yield batch_atom_nums, batch_confs, batch_energies
+            yield batch_atom_nums, batch_pos, batch_energies
 
 
-# spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', train_ratio=0.8, test_ratio=0.1, max_atom_num=60)
-spice_loader = SpiceLoader(mmap_mode="r")
-start = time.time()
+spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', train_ratio=0.8, test_ratio=0.1, max_atom_num=60)
+# spice_loader = SpiceLoader(mmap_mode="r")
+# start = time.time()
 
-for batch in spice_loader.get_epoch():
-    atom_nums, confs, energies = batch
+# for batch in spice_loader.get_epoch():
+#     atom_nums, pos, energies = batch
 
-end = time.time()
-print(end - start)
+# end = time.time()
+# print(end - start)
