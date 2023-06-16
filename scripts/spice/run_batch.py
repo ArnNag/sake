@@ -8,15 +8,8 @@ import tqdm
 from spiceloadernp import SpiceLoader
 
 def run():
-    ds_tr, ds_vl, ds_te = onp.load("spice_train.npz"), onp.load("spice_train.npz"), onp.load("spice_train.npz")
-    i_tr, i_vl, i_te = ds_tr["atomic_numbers"], ds_vl["atomic_numbers"], ds_te["atomic_numbers"]
-    x_tr, x_vl, x_te = ds_tr["pos"], ds_vl["pos"], ds_te["pos"]
-    y_tr, y_vl, y_te = ds_tr["total_energy"], ds_vl["total_energy"], ds_te["total_energy"]
-    
-    y_tr, y_vl, y_te = onp.expand_dims(y_tr, -1), onp.expand_dims(y_vl, -1), onp.expand_dims(y_te, -1)
-    m_tr, m_vl, m_te = (i_tr > 0), (i_vl > 0), (i_te > 0)
 
-    loader = SpiceLoader("spice_train.npz")  
+    loader = SpiceLoader("spice_train")  
 
     def make_edge_mask(m):
         return jnp.expand_dims(m, -1) * jnp.expand_dims(m, -2)
@@ -24,22 +17,12 @@ def run():
     def sum_mask(m):
         return jnp.sign(m.sum(-1, keepdims=True))
 
-    for _var in ["i", "x", "y", "m"]:
-        for _split in ["tr", "vl", "te"]:
-            locals()["%s_%s" % (_var, _split)] = jnp.array(locals()["%s_%s" % (_var, _split)])
-
-
-    i_tr, i_vl, i_te = jax.nn.one_hot(i_tr, i_tr.max()+1), jax.nn.one_hot(i_vl, i_tr.max()+1), jax.nn.one_hot(i_te, i_tr.max()+1)
-    m_tr, m_vl, m_te = make_edge_mask(m_tr), make_edge_mask(m_vl), make_edge_mask(m_te)
-
     BATCH_SIZE = 64
-    N_BATCHES = len(i_tr) // BATCH_SIZE
+    N_BATCHES = len(loader) // BATCH_SIZE
 
     from sake.utils import coloring
     from functools import partial
-    coloring = partial(coloring, mean=y_tr.mean(), std=y_tr.std())
-
-    print(y_tr.mean(), y_tr.std())
+    coloring = partial(coloring, mean=0, std=1) # TODO: serialize mean and std
 
     class Model(nn.Module):
         def setup(self):
@@ -59,6 +42,7 @@ def run():
             )
 
         def __call__(self, i, x, m):
+            print("i shape: ", i.shape, "\nx shape", x.shape, "\nm shape", m.shape)
             y, _, __ = self.model(i, x, mask=m)
             y = y * sum_mask(m)
             y = y.sum(-2)
@@ -91,20 +75,20 @@ def run():
         return state
     
     @jax.jit
-    def epoch(state, i_tr, x_tr, m_tr, y_tr):
+    def epoch(state, loader):
         key = jax.random.PRNGKey(state.step)
         idxs = jax.random.permutation(key, jnp.arange(BATCH_SIZE * N_BATCHES))
-        _i_tr = i_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *i_tr.shape[1:])
-        _x_tr = x_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *x_tr.shape[1:])
-        _m_tr = m_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *m_tr.shape[1:])
-        _y_tr = y_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, 1)
 
         def loop_body(batch_num, state):
             # i, x, m, y = next(iterator)
             # i, x, m, y = jnp.squeeze(i), jnp.squeeze(x), jnp.squeeze(m), jnp.squeeze(y)
             #
-            batch_idxs =  
-            i, x, m, y = _i_tr[idx], _x_tr[idx], _m_tr[idx], _y_tr[idx]
+            batch_start = BATCH_SIZE * batch_num
+            batch_end = batch_start + BATCH_SIZE
+            batch_idxs = idxs[batch_start:batch_end]
+            _i, x, y = loader[batch_idxs]
+            i = jax.nn.one_hot(i, i.max()+1)
+            m = make_edge_mask(i > 0)
             state = step_with_loss(state, i, x, m, y)
             return state
 
@@ -117,19 +101,17 @@ def run():
 
         return state
 
-    @partial(jax.jit, static_argnums=(5))
-    def many_epochs(state, i_tr, x_tr, m_tr, y_tr, n=10):
+    @partial(jax.jit, static_argnums=(3))
+    def many_epochs(state, loader, n=10):
         def loop_body(idx_batch, state):
-            state = epoch(state, i_tr, x_tr, m_tr, y_tr)
+            state = epoch(state, loader)
             return state
         state = jax.lax.fori_loop(0, n, loop_body, state)
         return state
 
     key = jax.random.PRNGKey(2666)
-    i0 = i_tr[:BATCH_SIZE]
-    x0 = x_tr[:BATCH_SIZE]
-    m0 = m_tr[:BATCH_SIZE]
-    y0 = y_tr[:BATCH_SIZE]
+    i0, x0, y0 = loader[:BATCH_SIZE]
+    m0 = make_edge_mask(i0 > 0)
 
     params = model.init(key, i0, x0, m0)
 

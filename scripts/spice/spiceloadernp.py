@@ -54,15 +54,18 @@ class SPICESerializer:
 
 class SpiceLoader:
 
-    def __init__(self, seed=2666, batch_size=128, mmap_mode=None):
+    def __init__(self, file_prefix, seed=2666, batch_size=128, mmap_mode=None):
         self.key = jax.random.PRNGKey(seed)
         self.batch_size = batch_size
-        self.train_energies = np.load("train_energies.npy", mmap_mode=mmap_mode)
-        self.train_atom_nums = np.load("train_atom_nums.npy", mmap_mode=mmap_mode)
-        self.train_pos = np.load("train_pos.npy", mmap_mode=mmap_mode)
+        self.train_energies = np.load(file_prefix + "_total_energy.npy", mmap_mode=mmap_mode)
+        self.train_atom_nums = np.load(file_prefix + "_atomic_numbers.npy", mmap_mode=mmap_mode)
+        self.train_pos = np.load(file_prefix + "_pos.npy")
 
     def __getitem__(self, i):
-        return self.train_atom_nums[i], self.train_batch_pos[i], self.train_energies[i]
+        return self.train_atom_nums[i], self.train_pos[i], self.train_energies[i]
+
+    def __len__(self):
+        return len(self.train_energies)
 
     def get_epoch(self):
         train_size = len(self.train_energies)

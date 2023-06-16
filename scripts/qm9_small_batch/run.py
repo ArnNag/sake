@@ -106,6 +106,7 @@ def run(target):
             # i, x, m, y = jnp.squeeze(i), jnp.squeeze(x), jnp.squeeze(m), jnp.squeeze(y)
             #
             i, x, m, y = _i_tr[idx], _x_tr[idx], _m_tr[idx], _y_tr[idx]
+            print("i.shape," i.shape, "x.shape", x.shape) 
             state = step_with_loss(state, i, x, m, y)
             return state
 
