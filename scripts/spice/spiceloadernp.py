@@ -41,10 +41,10 @@ class SPICESerializer:
             forces_arr = self.data[name]['dft_total_gradient']
             energy_arr = self.data[name]['dft_total_energy']
             all_energies.extend(energy_arr)
+            pad_num = self.max_atom_num - len(atom_nums)
+            padded_atom_nums = np.pad(atom_nums, (0, pad_num))
             for conf in range(len(pos_arr)):
-                pad_num = self.max_atom_num - len(atom_nums)
                 padded_pos = np.pad(pos_arr[conf], ((0, pad_num), (0, 0)))
-                padded_atom_nums = np.pad(atom_nums, (0, pad_num))
                 padded_forces = np.pad(forces_arr[conf], ((0, pad_num), (0, 0)))
                 all_pos.append(padded_pos)
                 all_atom_nums.append(padded_atom_nums)
