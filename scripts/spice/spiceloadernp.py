@@ -13,9 +13,9 @@ class SPICESerializer:
         key = jax.random.PRNGKey(seed)
         self.max_atom_num = max_atom_num
         self.test_names, self.train_names, self.val_names = self._split(key, train_ratio, test_ratio)
-        self._make_npy(self.train_names, "spice_train")
-        self._make_npy(self.test_names, "spice_test")
-        # self.make_npy(self.val_names, "spice_val")
+        self._make_npz(self.train_names, "spice_train")
+        self._make_npz(self.test_names, "spice_test")
+        # self.make_npz(self.val_names, "spice_val")
 
     def _split(self, key, train_ratio, test_ratio):
         n_samples = len(self.names)
@@ -27,7 +27,7 @@ class SPICESerializer:
         val_names = [self.names[i] for i in split_idxs[n_test + n_train:]]
         return test_names, train_names, val_names
 
-    def _make_npy(self, names, out_path):
+    def _make_npz(self, names, out_path):
         all_pos = []
         all_atom_nums = []
         all_energies = []
