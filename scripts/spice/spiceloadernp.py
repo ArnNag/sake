@@ -43,12 +43,11 @@ class SPICESerializer:
             all_energies.extend(energy_arr)
             pad_num = self.max_atom_num - len(atom_nums)
             padded_atom_nums = np.pad(atom_nums, (0, pad_num))
-            for conf in range(len(pos_arr)):
-                padded_pos = np.pad(pos_arr[conf], ((0, pad_num), (0, 0)))
-                padded_forces = np.pad(forces_arr[conf], ((0, pad_num), (0, 0)))
-                all_pos.append(padded_pos)
-                all_atom_nums.append(padded_atom_nums)
-                all_forces.append(padded_forces)
+            padded_pos = np.pad(pos_arr, ((0, 0), (0, pad_num), (0, 0)))
+            padded_forces = np.pad(forces_arr, ((0, 0), (0, pad_num), (0, 0)))
+            all_atom_nums.extend([padded_atom_nums for conf in range(len(pos_arr))])
+            all_forces.extend(padded_forces)
+            all_pos.extend(padded_pos)
         np.savez(out_path, atomic_numbers=np.array(all_atom_nums), total_energy=np.array(all_energies), forces=np.array(all_forces), pos=np.array(all_pos))
 
 
