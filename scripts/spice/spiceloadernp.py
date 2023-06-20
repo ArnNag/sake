@@ -10,16 +10,16 @@ class SPICESerializer:
     def __init__(self, data_path, train_ratio, test_ratio, seed=2666, max_atom_num=96):
         self.data = h5py.File(data_path)
         self.names = list(self.data.keys())
-        self.key = jax.random.PRNGKey(seed)
+        key = jax.random.PRNGKey(seed)
         self.max_atom_num = max_atom_num
-        self.test_names, self.train_names, self.val_names = self.split(train_ratio, test_ratio)
+        self.test_names, self.train_names, self.val_names = self._split(key, train_ratio, test_ratio)
         self.make_npy(self.train_names, "spice_train")
         self.make_npy(self.test_names, "spice_test")
         # self.make_npy(self.val_names, "spice_val")
 
-    def split(self, train_ratio, test_ratio):
+    def _split(self, key, train_ratio, test_ratio):
         n_samples = len(self.names)
-        split_idxs = jax.random.permutation(self.key, n_samples)
+        split_idxs = jax.random.permutation(key, n_samples)
         n_test = int(test_ratio * n_samples)
         n_train = int(train_ratio * n_samples)
         test_names = [self.names[i] for i in split_idxs[:n_test]]
@@ -27,7 +27,7 @@ class SPICESerializer:
         val_names = [self.names[i] for i in split_idxs[n_test + n_train:]]
         return test_names, train_names, val_names
 
-    def make_npy(self, names, out_path):
+    def _make_npy(self, names, out_path):
         all_pos = []
         all_atom_nums = []
         all_energies = []
