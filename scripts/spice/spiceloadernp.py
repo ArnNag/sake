@@ -79,7 +79,7 @@ class SpiceLoader:
             yield batch_atom_nums, batch_pos, batch_energies
 
 
-spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', train_ratio=0.001, test_ratio=0.001, max_atom_num=60)
+spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', train_ratio=0.8, test_ratio=0.1, max_atom_num=96)
 # spice_loader = SpiceLoader(mmap_mode="r")
 # start = time.time()
 
