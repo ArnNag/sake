@@ -6,17 +6,13 @@ import numpy as onp
 import sake
 import tqdm
 
-def run(target):
-    ds_tr, ds_vl, ds_te = onp.load("train.npz"), onp.load("valid.npz"), onp.load("test.npz")
-    i_tr, i_vl, i_te = ds_tr["charges"], ds_vl["charges"], ds_te["charges"]
-    x_tr, x_vl, x_te = ds_tr["positions"], ds_vl["positions"], ds_te["positions"]
-    y_tr, y_vl, y_te = ds_tr[target], ds_vl[target], ds_te[target]
+def run():
+    ds_tr, ds_vl, ds_te = onp.load("spice_train.npz"), onp.load("spice_val.npz"), onp.load("spice_test.npz")
+    i_tr, i_vl, i_te = ds_tr["atomic_numbers"], ds_vl["atomic_numbers"], ds_te["atomic_numbers"]
+    x_tr, x_vl, x_te = ds_tr["pos"], ds_vl["pos"], ds_te["pos"]
+    f_tr, f_vl, f_te = ds_tr["forces"], ds_vl["forces"], ds_te["forces"]
+    y_tr, y_vl, y_te = ds_tr["total_energy"], ds_vl["total_energy"], ds_te["total_energy"]
     
-    if target + "_thermo" in ds_tr:
-        y_tr = y_tr - ds_tr[target + "_thermo"]
-        y_vl = y_vl - ds_vl[target + "_thermo"]
-        y_te = y_te - ds_te[target + "_thermo"]
-
     y_tr, y_vl, y_te = onp.expand_dims(y_tr, -1), onp.expand_dims(y_vl, -1), onp.expand_dims(y_te, -1)
     m_tr, m_vl, m_te = (i_tr > 0), (i_vl > 0), (i_te > 0)
 
@@ -26,7 +22,7 @@ def run(target):
     def sum_mask(m):
         return jnp.sign(m.sum(-1, keepdims=True))
 
-    for _var in ["i", "x", "y", "m"]:
+    for _var in ["i", "x", "y", "f", "m"]:
         for _split in ["tr", "vl", "te"]:
             locals()["%s_%s" % (_var, _split)] = jnp.array(locals()["%s_%s" % (_var, _split)])
 
@@ -69,26 +65,32 @@ def run(target):
 
     model = Model()
 
-    def get_y_hat(params, i, x, m):
-        y_hat = model.apply(params, i, x, m=m)
-        y_hat = coloring(y_hat)
-        return y_hat
 
-    def loss_fn(params, i, x, m, y):
-        y_hat = get_y_hat(params, i, x, m)
-        loss = jnp.abs(y - y_hat).mean()
-        return loss
-
-    def step(state, i, x, m, y):
-        params = state.params
-        grads = jax.grad(loss_fn)(params, i, x, m, y)
-        state = state.apply_gradients(grads=grads)
-        return state
-    
     @jax.jit
-    def step_with_loss(state, i, x, m, y):
+    def get_e_pred(params, i, x, m):
+        i_tr = jnp.broadcast_to(i, (*x.shape[:-1], i.shape[-1]))
+        e_pred = model.apply(params, i_tr, x, m)
+        e_pred = e_pred.sum(axis=-2)
+        e_pred = coloring(e_pred)
+        return e_pred
+
+    def get_e_pred_sum(params, i, x, m):
+        e_pred = get_e_pred(params, i, x)
+        return -e_pred.sum()
+
+    get_f_pred = jax.jit(lambda params, x: jax.grad(get_e_pred_sum, argnums=(2,))(params, x)[0])
+
+    def loss_fn(params, i, x, m, f, y):
+        e_pred = get_e_pred(params, i, x, m)
+        f_pred = get_f_pred(params, i, x, m)
+        e_loss = jnp.abs(e_pred - y).mean()
+        f_loss = jnp.abs(f_pred - f).mean()
+        return f_loss + e_loss * 0.001
+
+    @jax.jit
+    def step_with_loss(state, i, x, m, f, y):
         params = state.params
-        grads = jax.grad(loss_fn)(params, i, x, m, y)
+        grads = jax.grad(loss_fn)(params, i, x, m, f, y)
         state = state.apply_gradients(grads=grads)
         return state
     
@@ -106,7 +108,7 @@ def run(target):
             # i, x, m, y = jnp.squeeze(i), jnp.squeeze(x), jnp.squeeze(m), jnp.squeeze(y)
             #
             i, x, m, y = _i_tr[idx], _x_tr[idx], _m_tr[idx], _y_tr[idx]
-            print("i.shape," i.shape, "x.shape", x.shape) 
+            print("i.shape", i.shape, "x.shape", x.shape) 
             state = step_with_loss(state, i, x, m, y)
             return state
 
@@ -164,4 +166,4 @@ def run(target):
 
 if __name__ == "__main__":
     import sys
-    run(sys.argv[1])
+    run()
