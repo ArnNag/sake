@@ -5,9 +5,10 @@ from flax import linen as nn
 import numpy as onp
 import sake
 import tqdm
+import os
 
 def run():
-    ds_tr, ds_vl, ds_te = onp.load("spice_train.npz"), onp.load("spice_val.npz"), onp.load("spice_test.npz")
+    ds_tr, ds_vl, ds_te = onp.load("old_spice_train.npz"), onp.load("old_spice_test.npz"), onp.load("old_spice_test.npz")
     i_tr, i_vl, i_te = ds_tr["atomic_numbers"], ds_vl["atomic_numbers"], ds_te["atomic_numbers"]
     x_tr, x_vl, x_te = ds_tr["pos"], ds_vl["pos"], ds_te["pos"]
     f_tr, f_vl, f_te = ds_tr["forces"], ds_vl["forces"], ds_te["forces"]
