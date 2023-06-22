@@ -7,14 +7,18 @@ import sake
 import tqdm
 
 def run():
+    print("nowhere")
     ds_tr, ds_vl, ds_te = onp.load("spice_train.npz"), onp.load("spice_val.npz"), onp.load("spice_test.npz")
+    print("here")
     i_tr, i_vl, i_te = ds_tr["atomic_numbers"], ds_vl["atomic_numbers"], ds_te["atomic_numbers"]
     x_tr, x_vl, x_te = ds_tr["pos"], ds_vl["pos"], ds_te["pos"]
     f_tr, f_vl, f_te = ds_tr["forces"], ds_vl["forces"], ds_te["forces"]
     y_tr, y_vl, y_te = ds_tr["total_energy"], ds_vl["total_energy"], ds_te["total_energy"]
+    print("there")
     
     y_tr, y_vl, y_te = onp.expand_dims(y_tr, -1), onp.expand_dims(y_vl, -1), onp.expand_dims(y_te, -1)
     m_tr, m_vl, m_te = (i_tr > 0), (i_vl > 0), (i_te > 0)
+    print("everywhere")
 
     def make_edge_mask(m):
         return jnp.expand_dims(m, -1) * jnp.expand_dims(m, -2)
@@ -75,7 +79,7 @@ def run():
         return e_pred
 
     def get_e_pred_sum(params, i, x, m):
-        e_pred = get_e_pred(params, i, x)
+        e_pred = get_e_pred(params, i, x, m)
         return -e_pred.sum()
 
     get_f_pred = jax.jit(lambda params, x: jax.grad(get_e_pred_sum, argnums=(2,))(params, x)[0])
