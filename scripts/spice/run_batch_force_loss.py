@@ -6,9 +6,9 @@ import numpy as onp
 import sake
 import tqdm
 
-def run():
+def run(prefix):
     print("nowhere")
-    ds_tr, ds_vl, ds_te = onp.load("spice_train.npz"), onp.load("spice_val.npz"), onp.load("spice_test.npz")
+    ds_tr, ds_vl, ds_te = onp.load(prefix + "spice_train.npz"), onp.load(prefix + "spice_val.npz"), onp.load(prefix + "spice_test.npz")
     print("here")
     i_tr, i_vl, i_te = ds_tr["atomic_numbers"], ds_vl["atomic_numbers"], ds_te["atomic_numbers"]
     x_tr, x_vl, x_te = ds_tr["pos"], ds_vl["pos"], ds_te["pos"]
@@ -82,7 +82,7 @@ def run():
         e_pred = get_e_pred(params, i, x, m)
         return -e_pred.sum()
 
-    get_f_pred = jax.jit(lambda params, x: jax.grad(get_e_pred_sum, argnums=(2,))(params, x)[0])
+    get_f_pred = jax.jit(jax.grad(get_e_pred_sum, argnums=(2)))
 
     def loss_fn(params, i, x, m, f, y):
         e_pred = get_e_pred(params, i, x, m)
@@ -99,21 +99,21 @@ def run():
         return state
     
     @jax.jit
-    def epoch(state, i_tr, x_tr, m_tr, y_tr):
+    def epoch(state, i_tr, x_tr, m_tr, f_tr, y_tr):
         key = jax.random.PRNGKey(state.step)
         idxs = jax.random.permutation(key, jnp.arange(BATCH_SIZE * N_BATCHES))
         _i_tr = i_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *i_tr.shape[1:])
         _x_tr = x_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *x_tr.shape[1:])
         _m_tr = m_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *m_tr.shape[1:])
+        _f_tr = f_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *f_tr.shape[1:])
         _y_tr = y_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, 1)
 
         def loop_body(idx, state):
             # i, x, m, y = next(iterator)
             # i, x, m, y = jnp.squeeze(i), jnp.squeeze(x), jnp.squeeze(m), jnp.squeeze(y)
             #
-            i, x, m, y = _i_tr[idx], _x_tr[idx], _m_tr[idx], _y_tr[idx]
-            print("i.shape", i.shape, "x.shape", x.shape) 
-            state = step_with_loss(state, i, x, m, y)
+            i, x, m, f, y = _i_tr[idx], _x_tr[idx], _m_tr[idx], _f_tr[idx], _y_tr[idx]
+            state = step_with_loss(state, i, x, m, f, y)
             return state
 
         state = jax.lax.fori_loop(0, N_BATCHES, loop_body, state)
@@ -164,10 +164,10 @@ def run():
     )
 
     for idx_batch in tqdm.tqdm(range(2000)):
-        state = epoch(state, i_tr, x_tr, m_tr, y_tr)
+        state = epoch(state, i_tr, x_tr, m_tr, f_tr, y_tr)
         assert state.opt_state.notfinite_count <= 10
         save_checkpoint("_" + target, target=state, step=idx_batch)
 
 if __name__ == "__main__":
     import sys
-    run()
+    run(sys.argv[1])

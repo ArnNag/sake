@@ -7,15 +7,15 @@ import os
 
 class SPICESerializer:
 
-    def __init__(self, data_path, train_ratio, test_ratio, seed=2666, max_atom_num=96):
+    def __init__(self, data_path, out_prefix, train_ratio, test_ratio, seed=2666, max_atom_num=96):
         self.data = h5py.File(data_path)
         self.names = list(self.data.keys())
         key = jax.random.PRNGKey(seed)
         self.max_atom_num = max_atom_num
         self.test_names, self.train_names, self.val_names = self._split(key, train_ratio, test_ratio)
-        self._make_npz(self.train_names, "spice_train")
-        self._make_npz(self.test_names, "spice_test")
-        self._make_npz(self.val_names, "spice_val")
+        self._make_npz(self.train_names, out_prefix + "spice_train")
+        self._make_npz(self.test_names, out_prefix + "spice_test")
+        # self._make_npz(self.val_names, "spice_val")
 
     def _split(self, key, train_ratio, test_ratio):
         n_samples = len(self.names)
@@ -79,7 +79,7 @@ class SpiceLoader:
             yield batch_atom_nums, batch_pos, batch_energies
 
 
-spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', train_ratio=0.8, test_ratio=0.1, max_atom_num=96)
+spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', "small_", train_ratio=0.01, test_ratio=0.01, max_atom_num=96)
 # spice_loader = SpiceLoader(mmap_mode="r")
 # start = time.time()
 
