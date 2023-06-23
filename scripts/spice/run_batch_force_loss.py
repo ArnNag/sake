@@ -164,10 +164,15 @@ def run(prefix):
         apply_fn=model.apply, params=params, tx=optimizer,
     )
 
+    jax.profiler.start_trace("tensorboard")
+
     for idx_batch in tqdm.tqdm(range(2000)):
         state = epoch(state, i_tr, x_tr, m_tr, f_tr, y_tr)
+        state.block_until_ready()
         assert state.opt_state.notfinite_count <= 10
-        save_checkpoint("_" + target, target=state, step=idx_batch)
+        # save_checkpoint("_" + target, target=state, step=idx_batch)
+
+    jax.profiler.stop_trace()
 
 if __name__ == "__main__":
     import sys
