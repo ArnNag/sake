@@ -4,11 +4,12 @@ import numpy as np
 import time
 import json
 import os
+import sys
 
 class SPICESerializer:
 
     def __init__(self, data_path, out_prefix, train_ratio, test_ratio, seed=2666, max_atom_num=96):
-        self.data = h5py.File(data_path)
+        self.data = h5py.File(data_path, 'r')
         self.names = list(self.data.keys())
         key = jax.random.PRNGKey(seed)
         self.max_atom_num = max_atom_num
@@ -79,7 +80,8 @@ class SpiceLoader:
             yield batch_atom_nums, batch_pos, batch_energies
 
 
-spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', "small_", train_ratio=0.01, test_ratio=0.01, max_atom_num=96)
+if __name__ == "__main__": 
+	spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', sys.argv[1], train_ratio=float(sys.argv[2]), test_ratio=float(sys.argv[3]), max_atom_num=int(sys.argv[4]))
 # spice_loader = SpiceLoader(mmap_mode="r")
 # start = time.time()
 

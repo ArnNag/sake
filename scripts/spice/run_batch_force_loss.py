@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax import linen as nn
+from flax import config
 import numpy as onp
 import sake
 import tqdm
@@ -34,7 +35,7 @@ def run(prefix):
     i_tr, i_vl, i_te = jax.nn.one_hot(i_tr, i_tr.max()+1), jax.nn.one_hot(i_vl, i_tr.max()+1), jax.nn.one_hot(i_te, i_tr.max()+1)
     m_tr, m_vl, m_te = make_edge_mask(m_tr), make_edge_mask(m_vl), make_edge_mask(m_te)
 
-    BATCH_SIZE = 64
+    BATCH_SIZE = 32
     N_BATCHES = len(i_tr) // BATCH_SIZE
 
     from sake.utils import coloring
