@@ -56,6 +56,7 @@ class DenseSAKEModel(nn.Module):
     def __call__(self, h, x, v=None, mask=None, he=None):
         h = self.embedding_in(h)
         for layer in self.layers:
+            print("layer: ", layer)
             h, x, v = layer(h, x, v, mask=mask, he=he)
         h = self.embedding_out(h)
         return h, x, v
