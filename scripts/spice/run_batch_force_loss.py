@@ -4,7 +4,6 @@ import optax
 from flax import linen as nn
 from flax import config
 import numpy as onp
-from numpy import nan
 import sake
 import tqdm
 
@@ -112,7 +111,7 @@ def run(prefix):
         print("start of epoch")
         key = jax.random.PRNGKey(state.step)
         idxs = jax.random.permutation(key, jnp.arange(BATCH_SIZE * N_BATCHES))
-        _i_tr = jax.nn.one_hot(i_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *i_tr.shape[1:])
+        _i_tr = i_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *i_tr.shape[1:])
         _x_tr = x_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *x_tr.shape[1:])
         _m_tr = m_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *m_tr.shape[1:])
         _f_tr = f_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *f_tr.shape[1:])
