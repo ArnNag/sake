@@ -16,7 +16,7 @@ class SPICESerializer:
         self.test_names, self.train_names, self.val_names = self._split(key, train_ratio, test_ratio)
         self._make_npz(self.train_names, out_prefix + "spice_train")
         self._make_npz(self.test_names, out_prefix + "spice_test")
-        # self._make_npz(self.val_names, "spice_val")
+        self._make_npz(self.val_names, out_prefix + "spice_val")
 
     def _split(self, key, train_ratio, test_ratio):
         n_samples = len(self.names)
