@@ -293,7 +293,8 @@ class SparseSAKELayer(SAKELayer):
         x_minus_xt = x_minus_xt / (x_minus_xt_norm + 1e-5) # ** 2
 
         # (batch_size, n, n, coefficients, 3)
-        combinations = jnp.expand_dims(x_minus_xt, -2) * jnp.expand_dims(coefficients, -1)
+        # combinations = jnp.expand_dims(x_minus_xt, -2) * jnp.expand_dims(coefficients, -1)
+        combinations = jnp.einsum('bnNx,bnNc->bnNcx', x_minus_xt, coefficients)
 
         # (batch_size, n, n, coefficients, 3)
         # dense: combinations_sum = combinations.mean(axis=-3)
