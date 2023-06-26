@@ -22,9 +22,6 @@ def run(prefix):
     
     print("loaded all data")
 
-    def make_edge_mask(m):
-        return jnp.expand_dims(m, -1) * jnp.expand_dims(m, -2)
-
     def sum_mask(m):
         return jnp.sign(m.sum(-1, keepdims=True))
 
@@ -181,10 +178,12 @@ class SPICEBatchLoader:
         batch_start = batch_num * self.batch_size
         batch_end = batch_start + self.batch_size
         batch_idxs = self.idxs[batch_start:batch_end]
-        i_batch = jax.nn.one_hot(self.i_tr[batch_idxs], self.num_elements) 
+        i_nums = self.i_tr[batch_idxs]
+        i_batch = jax.nn.one_hot(i_nums, self.num_elements) 
         x_batch = self.x_tr[batch_idxs]
         f_batch = self.f_tr[batch_idxs]
-        m_batch = make_edge_mask(i_batch > 0) 
+        _m = i_nums > 0
+        m_batch = jnp.einsum("bn,bN->bnN", _m, _m) 
         y_batch = onp.expand_dims(self.y_tr[batch_idxs], -1)
         return i_batch, x_batch, f_batch, m_batch, y_batch  
 
