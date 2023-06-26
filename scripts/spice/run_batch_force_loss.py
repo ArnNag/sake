@@ -8,18 +8,16 @@ import sake
 import tqdm
 
 def run(prefix):
-    print("nowhere")
+    jax.disable_jit()
     ds_tr, ds_vl, ds_te = onp.load(prefix + "spice_train.npz"), onp.load(prefix + "spice_val.npz"), onp.load(prefix + "spice_test.npz")
-    print("here")
     i_tr, i_vl, i_te = ds_tr["atomic_numbers"], ds_vl["atomic_numbers"], ds_te["atomic_numbers"]
     x_tr, x_vl, x_te = ds_tr["pos"], ds_vl["pos"], ds_te["pos"]
     f_tr, f_vl, f_te = ds_tr["forces"], ds_vl["forces"], ds_te["forces"]
     y_tr, y_vl, y_te = ds_tr["total_energy"], ds_vl["total_energy"], ds_te["total_energy"]
-    print("there")
     
     y_tr, y_vl, y_te = onp.expand_dims(y_tr, -1), onp.expand_dims(y_vl, -1), onp.expand_dims(y_te, -1)
     m_tr, m_vl, m_te = (i_tr > 0), (i_vl > 0), (i_te > 0)
-    print("everywhere")
+    print("loaded all data")
 
     def make_edge_mask(m):
         return jnp.expand_dims(m, -1) * jnp.expand_dims(m, -2)
@@ -95,12 +93,16 @@ def run(prefix):
     @jax.jit
     def step_with_loss(state, i, x, m, f, y):
         params = state.params
+        print("before grads", i)
         grads = jax.grad(loss_fn)(params, i, x, m, f, y)
+        print("after grads")
         state = state.apply_gradients(grads=grads)
+        print("after apply")
         return state
     
     @jax.jit
     def epoch(state, i_tr, x_tr, m_tr, f_tr, y_tr):
+        print("start of epoch")
         key = jax.random.PRNGKey(state.step)
         idxs = jax.random.permutation(key, jnp.arange(BATCH_SIZE * N_BATCHES))
         _i_tr = i_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *i_tr.shape[1:])
@@ -115,14 +117,11 @@ def run(prefix):
             #
             i, x, m, f, y = _i_tr[idx], _x_tr[idx], _m_tr[idx], _f_tr[idx], _y_tr[idx]
             state = step_with_loss(state, i, x, m, f, y)
+            print("after step_with_loss")
             return state
 
         state = jax.lax.fori_loop(0, N_BATCHES, loop_body, state)
-
-        '''
-        for i, x, m, y in iterator: 
-            state = loop_body(i, x, m, y, state)
-        '''
+        print("after fori_loop")
 
         return state
 
@@ -164,15 +163,14 @@ def run(prefix):
         apply_fn=model.apply, params=params, tx=optimizer,
     )
 
-    jax.profiler.start_trace("tensorboard")
 
-    for idx_batch in tqdm.tqdm(range(2000)):
+    for idx_batch in range(1):
+        print("before epoch")
         state = epoch(state, i_tr, x_tr, m_tr, f_tr, y_tr)
-        state.block_until_ready()
+        print("after epoch")
         assert state.opt_state.notfinite_count <= 10
         # save_checkpoint("_" + target, target=state, step=idx_batch)
 
-    jax.profiler.stop_trace()
 
 if __name__ == "__main__":
     import sys

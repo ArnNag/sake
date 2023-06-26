@@ -8,7 +8,7 @@ import tqdm
 import random
 
 def run():
-    ds_tr = onp.load("spice_train.npz")
+    ds_tr = onp.load("tiny_spice_train.npz")
     i_tr = ds_tr["atomic_numbers"]
     x_tr = ds_tr["pos"]
     y_tr = ds_tr["total_energy"]
@@ -93,7 +93,7 @@ def run():
 
     for idx_batch in tqdm.tqdm(range(2000)):
         state = epoch(state, i_tr, x_tr, y_tr)
-        save_checkpoint("_spice", target=state, step=idx_batch)
+    #     save_checkpoint("_spice", target=state, step=idx_batch)
 
 if __name__ == "__main__":
     import sys
