@@ -4,12 +4,20 @@ import optax
 from flax import linen as nn
 from flax import config
 import numpy as onp
+from numpy import nan
 import sake
 import tqdm
 
 def run(prefix):
     ds_tr, ds_vl, ds_te = onp.load(prefix + "spice_train.npz"), onp.load(prefix + "spice_val.npz"), onp.load(prefix + "spice_test.npz")
     i_tr, i_vl, i_te = ds_tr["atomic_numbers"], ds_vl["atomic_numbers"], ds_te["atomic_numbers"]
+
+    # Index into ELEMENT_MAP is atomic number, value is type number. -99 indicates element not in dataset.
+    ELEMENT_MAP = onp.array([ 0,  1, -99,  2, -99, -99,  3,  4,  5,  6, -99,  7,  8, -99, -99,  9, 10, 11, -99, 12, 13, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, 14, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, 15]) 
+    i_tr, i_vl, i_te = ELEMENT_MAP[i_tr], ELEMENT_MAP[i_vl], ELEMENT_MAP[i_te]
+    print(i_te, i_vl, i_te)
+
+    ELEMENT_DICT = {0:0, 1:1, 3:2, 6:3, 7:4, 8:5, 9:6, 11:7, 12:8, 15:9, 16:10, 17:11, 19:12, 20:13, 35:14, 53:15}
     x_tr, x_vl, x_te = ds_tr["pos"], ds_vl["pos"], ds_te["pos"]
     f_tr, f_vl, f_te = ds_tr["forces"], ds_vl["forces"], ds_te["forces"]
     y_tr, y_vl, y_te = ds_tr["total_energy"], ds_vl["total_energy"], ds_te["total_energy"]
@@ -104,7 +112,7 @@ def run(prefix):
         print("start of epoch")
         key = jax.random.PRNGKey(state.step)
         idxs = jax.random.permutation(key, jnp.arange(BATCH_SIZE * N_BATCHES))
-        _i_tr = i_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *i_tr.shape[1:])
+        _i_tr = jax.nn.one_hot(i_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *i_tr.shape[1:])
         _x_tr = x_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *x_tr.shape[1:])
         _m_tr = m_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *m_tr.shape[1:])
         _f_tr = f_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *f_tr.shape[1:])
