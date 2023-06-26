@@ -20,8 +20,6 @@ def run(prefix):
     f_tr, f_vl, f_te = ds_tr["forces"], ds_vl["forces"], ds_te["forces"]
     y_tr, y_vl, y_te = ds_tr["total_energy"], ds_vl["total_energy"], ds_te["total_energy"]
     
-    y_tr, y_vl, y_te = onp.expand_dims(y_tr, -1), onp.expand_dims(y_vl, -1), onp.expand_dims(y_te, -1)
-    m_tr, m_vl, m_te = (i_tr > 0), (i_vl > 0), (i_te > 0)
     print("loaded all data")
 
     def make_edge_mask(m):
@@ -33,10 +31,6 @@ def run(prefix):
     for _var in ["i", "x", "y", "f", "m"]:
         for _split in ["tr", "vl", "te"]:
             locals()["%s_%s" % (_var, _split)] = jnp.array(locals()["%s_%s" % (_var, _split)])
-
-
-    i_tr, i_vl, i_te = jax.nn.one_hot(i_tr, i_tr.max()+1), jax.nn.one_hot(i_vl, i_tr.max()+1), jax.nn.one_hot(i_te, i_tr.max()+1)
-    m_tr, m_vl, m_te = make_edge_mask(m_tr), make_edge_mask(m_vl), make_edge_mask(m_te)
 
     BATCH_SIZE = 32
     N_BATCHES = len(i_tr) // BATCH_SIZE
@@ -108,7 +102,7 @@ def run(prefix):
     @jax.jit
     def epoch(state, i_tr, x_tr, f_tr, y_tr):
         print("start of epoch")
-        loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, state.step, batch_size)
+        loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, state.step, BATCH_SIZE)
 
         def loop_body(idx, state):
             # i, x, m, y = next(iterator)
@@ -132,10 +126,8 @@ def run(prefix):
         state = jax.lax.fori_loop(0, n, loop_body, state)
         return state
 
-    key = jax.random.PRNGKey(2666)
-    i0 = i_tr[:BATCH_SIZE]
-    x0 = x_tr[:BATCH_SIZE]
-    m0 = m_tr[:BATCH_SIZE]
+    init_loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, 2666, BATCH_SIZE)
+    i0, x0, m0, _, _ = init_loader.get_batch(0)
 
     params = model.init(key, i0, x0, m0)
 
