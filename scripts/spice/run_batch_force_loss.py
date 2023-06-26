@@ -13,10 +13,9 @@ def run(prefix):
 
     # Index into ELEMENT_MAP is atomic number, value is type number. -99 indicates element not in dataset.
     ELEMENT_MAP = onp.array([ 0,  1, -99,  2, -99, -99,  3,  4,  5,  6, -99,  7,  8, -99, -99,  9, 10, 11, -99, 12, 13, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, 14, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, 15]) 
+    NUM_ELEMENTS = 16
     i_tr, i_vl, i_te = ELEMENT_MAP[i_tr], ELEMENT_MAP[i_vl], ELEMENT_MAP[i_te]
-    print(i_te, i_vl, i_te)
 
-    ELEMENT_DICT = {0:0, 1:1, 3:2, 6:3, 7:4, 8:5, 9:6, 11:7, 12:8, 15:9, 16:10, 17:11, 19:12, 20:13, 35:14, 53:15}
     x_tr, x_vl, x_te = ds_tr["pos"], ds_vl["pos"], ds_te["pos"]
     f_tr, f_vl, f_te = ds_tr["forces"], ds_vl["forces"], ds_te["forces"]
     y_tr, y_vl, y_te = ds_tr["total_energy"], ds_vl["total_energy"], ds_te["total_energy"]
@@ -107,21 +106,15 @@ def run(prefix):
         return state
     
     @jax.jit
-    def epoch(state, i_tr, x_tr, m_tr, f_tr, y_tr):
+    def epoch(state, i_tr, x_tr, f_tr, y_tr):
         print("start of epoch")
-        key = jax.random.PRNGKey(state.step)
-        idxs = jax.random.permutation(key, jnp.arange(BATCH_SIZE * N_BATCHES))
-        _i_tr = i_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *i_tr.shape[1:])
-        _x_tr = x_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *x_tr.shape[1:])
-        _m_tr = m_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *m_tr.shape[1:])
-        _f_tr = f_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, *f_tr.shape[1:])
-        _y_tr = y_tr[idxs][:BATCH_SIZE * N_BATCHES].reshape(N_BATCHES, BATCH_SIZE, 1)
+        loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, state.step, batch_size)
 
         def loop_body(idx, state):
             # i, x, m, y = next(iterator)
             # i, x, m, y = jnp.squeeze(i), jnp.squeeze(x), jnp.squeeze(m), jnp.squeeze(y)
             #
-            i, x, m, f, y = _i_tr[idx], _x_tr[idx], _m_tr[idx], _f_tr[idx], _y_tr[idx]
+            i, x, m, f, y = loader.get_batch(idx)  
             state = step_with_loss(state, i, x, m, f, y)
             print("after step_with_loss")
             return state
@@ -143,7 +136,6 @@ def run(prefix):
     i0 = i_tr[:BATCH_SIZE]
     x0 = x_tr[:BATCH_SIZE]
     m0 = m_tr[:BATCH_SIZE]
-    y0 = y_tr[:BATCH_SIZE]
 
     params = model.init(key, i0, x0, m0)
 
@@ -177,6 +169,31 @@ def run(prefix):
         assert state.opt_state.notfinite_count <= 10
         # save_checkpoint("_" + target, target=state, step=idx_batch)
 
+'''
+Initialize for every epoch with a unique seed.
+'''
+class SPICEBatchLoader:
+
+    def __init__(self, i_tr, x_tr, f_tr, y_tr, seed, batch_size):
+        self.batch_size = batch_size
+        self.i_tr = i_tr
+        self.x_tr = x_tr
+        self.f_tr = f_tr
+        self.y_tr = y_tr
+        key = jax.random.PRNGKey(seed)
+        n_batches = len(i_tr) // batch_size
+        self.idxs = jax.random.permutation(key, batch_size * n_batches)
+
+    def get_batch(batch_num):
+        batch_start = batch_num * self.batch_size
+        batch_end = batch_start + self.batch_size
+        batch_idxs = self.idxs[batch_start:batch_end]
+        i_batch = jax.nn.one_hot(self.i_tr[batch_idxs], NUM_ELEMENTS) 
+        x_batch = self.x_tr[batch_idxs]
+        f_batch = self.f_tr[batch_idxs]
+        m_batch = make_edge_mask(i_batch > 0) 
+        y_batch = onp.expand_dims(self.y_tr[batch_idxs], -1)
+        return i_batch, x_batch, f_batch, m_batch, y_batch  
 
 if __name__ == "__main__":
     import sys
