@@ -124,9 +124,9 @@ class DenseSAKELayer(SAKELayer):
             # _mask = jnp.expand_dims(jnp.expand_dims(mask, -1), -1)
             # combinations = combinations * _mask
             print("mask shape: ", mask.shape)
-            combinations = jnp.einsum("bnNcx,nN->bnNcx", combinations, mask)
+            combinations = jnp.einsum("bnNcx,bnN->bnNcx", combinations, mask)
             # combinations_sum = combinations.sum(axis=-3) / (_mask.sum(axis=-3) + 1e-8)
-            combinations_sum = jnp.einsum('bnNcx,n->bncx', combinations, 1 / (mask.sum(axis=-1) + 1e-8))
+            combinations_sum = jnp.einsum('bnNcx,bn->bncx', combinations, 1 / (mask.sum(axis=-1) + 1e-8))
 
 
         else:
