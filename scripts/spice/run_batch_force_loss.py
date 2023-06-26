@@ -173,5 +173,4 @@ def run(prefix):
 
 if __name__ == "__main__":
     import sys
-    with jax.disable_jit():
-        run(sys.argv[1])
+    run(sys.argv[1])
