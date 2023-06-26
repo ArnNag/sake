@@ -118,7 +118,7 @@ def run(prefix):
 
         return state
 
-    @partial(jax.jit, static_argnums=(5))
+    @partial(jax.jit, static_argnums=(4))
     def many_epochs(state, i_tr, x_tr, y_tr, n=10):
         def loop_body(idx_batch, state):
             state = epoch(state, i_tr, x_tr, y_tr)
@@ -176,7 +176,7 @@ class SPICEBatchLoader:
         n_batches = len(i_tr) // batch_size
         self.idxs = jax.random.permutation(key, batch_size * n_batches)
 
-    def get_batch(batch_num):
+    def get_batch(self, batch_num):
         batch_start = batch_num * self.batch_size
         batch_end = batch_start + self.batch_size
         batch_idxs = self.idxs[batch_start:batch_end]
