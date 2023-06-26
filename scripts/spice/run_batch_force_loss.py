@@ -181,7 +181,7 @@ class SPICEBatchLoader:
         batch_start = batch_num * self.batch_size
         batch_end = batch_start + self.batch_size
         batch_idxs = self.idxs[batch_start:batch_end]
-        i_batch = jax.nn.one_hot(self.i_tr[batch_idxs], num_elements) 
+        i_batch = jax.nn.one_hot(self.i_tr[batch_idxs], self.num_elements) 
         x_batch = self.x_tr[batch_idxs]
         f_batch = self.f_tr[batch_idxs]
         m_batch = make_edge_mask(i_batch > 0) 
