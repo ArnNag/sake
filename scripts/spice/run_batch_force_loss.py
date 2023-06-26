@@ -163,7 +163,7 @@ def run(prefix):
     )
 
 
-    for idx_batch in range(1):
+    for idx_batch in range(5):
         print("before epoch")
         state = epoch(state, i_tr, x_tr, m_tr, f_tr, y_tr)
         print("after epoch")
