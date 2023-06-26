@@ -102,7 +102,7 @@ def run(prefix):
     @jax.jit
     def epoch(state, i_tr, x_tr, f_tr, y_tr):
         print("start of epoch")
-        loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, state.step, BATCH_SIZE)
+        loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, state.step, BATCH_SIZE, NUM_ELEMENTS)
 
         def loop_body(idx, state):
             # i, x, m, y = next(iterator)
@@ -126,7 +126,7 @@ def run(prefix):
         state = jax.lax.fori_loop(0, n, loop_body, state)
         return state
 
-    init_loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, 2666, BATCH_SIZE)
+    init_loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, 2666, BATCH_SIZE, NUM_ELEMENTS)
     i0, x0, m0, _, _ = init_loader.get_batch(0)
 
     params = model.init(key, i0, x0, m0)
@@ -166,8 +166,9 @@ Initialize for every epoch with a unique seed.
 '''
 class SPICEBatchLoader:
 
-    def __init__(self, i_tr, x_tr, f_tr, y_tr, seed, batch_size):
+    def __init__(self, i_tr, x_tr, f_tr, y_tr, seed, batch_size, num_elements):
         self.batch_size = batch_size
+        self.num_elements = num_elements
         self.i_tr = i_tr
         self.x_tr = x_tr
         self.f_tr = f_tr
@@ -180,7 +181,7 @@ class SPICEBatchLoader:
         batch_start = batch_num * self.batch_size
         batch_end = batch_start + self.batch_size
         batch_idxs = self.idxs[batch_start:batch_end]
-        i_batch = jax.nn.one_hot(self.i_tr[batch_idxs], NUM_ELEMENTS) 
+        i_batch = jax.nn.one_hot(self.i_tr[batch_idxs], num_elements) 
         x_batch = self.x_tr[batch_idxs]
         f_batch = self.f_tr[batch_idxs]
         m_batch = make_edge_mask(i_batch > 0) 
