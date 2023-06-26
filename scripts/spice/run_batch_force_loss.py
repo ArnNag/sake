@@ -126,6 +126,7 @@ def run(prefix):
     init_loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, 2666, BATCH_SIZE, NUM_ELEMENTS)
     i0, x0, m0, _, _ = init_loader.get_batch(0)
 
+    key = jax.random.PRNGKey(2666)
     params = model.init(key, i0, x0, m0)
 
     scheduler = optax.warmup_cosine_decay_schedule(
