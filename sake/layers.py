@@ -116,7 +116,8 @@ class DenseSAKELayer(SAKELayer):
 
         # (batch_size, n, n, coefficients, 3)
         print("x_minus_xt shape: ", x_minus_xt.shape, "coefficients shape: ", coefficients.shape)
-        combinations = jnp.expand_dims(x_minus_xt, -2) * jnp.expand_dims(coefficients, -1)
+        # combinations = jnp.expand_dims(x_minus_xt, -2) * jnp.expand_dims(coefficients, -1)
+        combinations = jnp.einsum('bnNx,bnNc->bnNcx', x_minus_xt, coefficients)
         print("combinations shape: ", combinations.shape)
 
         if mask is not None:
@@ -293,8 +294,7 @@ class SparseSAKELayer(SAKELayer):
         x_minus_xt = x_minus_xt / (x_minus_xt_norm + 1e-5) # ** 2
 
         # (batch_size, n, n, coefficients, 3)
-        # combinations = jnp.expand_dims(x_minus_xt, -2) * jnp.expand_dims(coefficients, -1)
-        combinations = jnp.einsum('bnNx,bnNc->bnNcx', x_minus_xt, coefficients)
+        combinations = jnp.expand_dims(x_minus_xt, -2) * jnp.expand_dims(coefficients, -1)
 
         # (batch_size, n, n, coefficients, 3)
         # dense: combinations_sum = combinations.mean(axis=-3)
