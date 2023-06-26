@@ -115,7 +115,9 @@ class DenseSAKELayer(SAKELayer):
         x_minus_xt = x_minus_xt / (x_minus_xt_norm + 1e-5) # ** 2
 
         # (batch_size, n, n, coefficients, 3)
+        print("x_minus_xt shape: ", x_minus_xt.shape, "coefficients shape: ", coefficients.shape)
         combinations = jnp.expand_dims(x_minus_xt, -2) * jnp.expand_dims(coefficients, -1)
+        print("combinations shape: ", combinations.shape)
 
         if mask is not None:
             _mask = jnp.expand_dims(jnp.expand_dims(mask, -1), -1)
