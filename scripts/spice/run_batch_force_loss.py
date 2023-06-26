@@ -28,7 +28,7 @@ def run(prefix):
     def sum_mask(m):
         return jnp.sign(m.sum(-1, keepdims=True))
 
-    for _var in ["i", "x", "y", "f", "m"]:
+    for _var in ["i", "x", "y", "f"]:
         for _split in ["tr", "vl", "te"]:
             locals()["%s_%s" % (_var, _split)] = jnp.array(locals()["%s_%s" % (_var, _split)])
 
