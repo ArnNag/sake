@@ -119,9 +119,9 @@ def run(prefix):
         return state
 
     @partial(jax.jit, static_argnums=(5))
-    def many_epochs(state, i_tr, x_tr, m_tr, y_tr, n=10):
+    def many_epochs(state, i_tr, x_tr, y_tr, n=10):
         def loop_body(idx_batch, state):
-            state = epoch(state, i_tr, x_tr, m_tr, y_tr)
+            state = epoch(state, i_tr, x_tr, y_tr)
             return state
         state = jax.lax.fori_loop(0, n, loop_body, state)
         return state
@@ -156,7 +156,7 @@ def run(prefix):
 
     for idx_batch in range(5):
         print("before epoch")
-        state = epoch(state, i_tr, x_tr, m_tr, f_tr, y_tr)
+        state = epoch(state, i_tr, x_tr, f_tr, y_tr)
         print("after epoch")
         assert state.opt_state.notfinite_count <= 10
         # save_checkpoint("_" + target, target=state, step=idx_batch)
