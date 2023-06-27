@@ -5,7 +5,7 @@ from flax import linen as nn
 from flax import config
 import numpy as onp
 import sake
-import tqdm
+from jax_tqdm import loop_tqdm
 
 def run(prefix):
     ds_tr = onp.load(prefix + "spice_train.npz")
@@ -87,29 +87,24 @@ def run(prefix):
     @jax.jit
     def step_with_loss(state, i, x, m, f, y):
         params = state.params
-        print("before grads", i)
         grads = jax.grad(loss_fn)(params, i, x, m, f, y)
-        print("after grads")
         state = state.apply_gradients(grads=grads)
-        print("after apply")
         return state
     
     @jax.jit
     def epoch(state, i_tr, x_tr, f_tr, y_tr):
-        print("start of epoch")
         loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, state.step, BATCH_SIZE, NUM_ELEMENTS)
 
+        @loop_tqdm(N_BATCHES, print_rate=1)
         def loop_body(idx, state):
             # i, x, m, y = next(iterator)
             # i, x, m, y = jnp.squeeze(i), jnp.squeeze(x), jnp.squeeze(m), jnp.squeeze(y)
             #
             i, x, m, f, y = loader.get_batch(idx)  
             state = step_with_loss(state, i, x, m, f, y)
-            print("after step_with_loss")
             return state
 
         state = jax.lax.fori_loop(0, N_BATCHES, loop_body, state)
-        print("after fori_loop")
 
         return state
 
@@ -174,7 +169,6 @@ class SPICEBatchLoader:
         self.idxs = jax.random.permutation(key, n_batches * batch_size).reshape(n_batches, batch_size)
 
     def get_batch(self, batch_num):
-        print(batch_num)
         batch_idxs = self.idxs[batch_num]
         i_nums = self.i_tr[batch_idxs]
         i_batch = jax.nn.one_hot(i_nums, self.num_elements) 
