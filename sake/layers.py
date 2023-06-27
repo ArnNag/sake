@@ -108,6 +108,7 @@ class DenseSAKELayer(SAKELayer):
     def spatial_attention(self, h_e_mtx, x_minus_xt, x_minus_xt_norm, mask=None):
         # (batch_size, n, n, n_coefficients)
         # coefficients = self.coefficients_mlp(h_e_mtx)# .unsqueeze(-1)
+        jax.debug.print("h_e_mtx shape: {}", h_e_mtx.shape)
         coefficients = self.x_mixing(h_e_mtx)
 
         # (batch_size, n, n, 3)
@@ -288,7 +289,6 @@ class SparseSAKELayer(SAKELayer):
     def spatial_attention(self, h_e_mtx, x_minus_xt, x_minus_xt_norm, idxs):
         # (batch_size, n, n, n_coefficients)
         # coefficients = self.coefficients_mlp(h_e_mtx)# .unsqueeze(-1)
-        jax.debug.print("h_e_mtx shape: {}", h_e_mtx.shape)
         coefficients = self.x_mixing(h_e_mtx)
 
         # (batch_size, n, n, 3)
