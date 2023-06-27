@@ -174,6 +174,7 @@ class SPICEBatchLoader:
         self.idxs = jax.random.permutation(key, n_batches * batch_size).reshape(n_batches, batch_size)
 
     def get_batch(self, batch_num):
+        print(batch_num)
         batch_idxs = self.idxs[batch_num]
         i_nums = self.i_tr[batch_idxs]
         i_batch = jax.nn.one_hot(i_nums, self.num_elements) 
@@ -182,7 +183,6 @@ class SPICEBatchLoader:
         _m = i_nums > 0
         m_batch = jnp.einsum("bn,bN->bnN", _m, _m) 
         y_batch = jnp.expand_dims(self.y_tr[batch_idxs], -1)
-        jax.debug.print("i_nums: {i_nums}, i_batch: {i_batch}, x_batch: {x_batch}, f_batch: {f_batch}, _m: {_m}, m_batch: {m_batch}, y_batch: {y_batch}", i_nums=i_nums.shape, i_batch=i_batch.shape, x_batch=x_batch.shape, f_batch=f_batch.shape, _m=_m.shape, m_batch=m_batch.shape, y_batch=y_batch.shape)
         return i_batch, x_batch, m_batch, f_batch, y_batch  
 
 if __name__ == "__main__":
