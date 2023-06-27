@@ -171,12 +171,10 @@ class SPICEBatchLoader:
         self.y_tr = y_tr
         key = jax.random.PRNGKey(seed)
         n_batches = len(i_tr) // batch_size
-        self.idxs = jax.random.permutation(key, batch_size * n_batches)
+        self.idxs = jax.random.permutation(key, n_batches * batch_size).reshape(n_batches, batch_size)
 
     def get_batch(self, batch_num):
-        batch_start = batch_num * self.batch_size
-        batch_end = batch_start + self.batch_size
-        batch_idxs = self.idxs[batch_start:batch_end]
+        batch_idxs = self.idxs[batch_num]
         i_nums = self.i_tr[batch_idxs]
         i_batch = jax.nn.one_hot(i_nums, self.num_elements) 
         x_batch = self.x_tr[batch_idxs]
