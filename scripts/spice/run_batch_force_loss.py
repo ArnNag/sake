@@ -36,8 +36,6 @@ def run(prefix):
     from functools import partial
     coloring = partial(coloring, mean=y_tr.mean(), std=y_tr.std())
 
-    print(y_tr.mean(), y_tr.std())
-
     class Model(nn.Module):
         def setup(self):
             self.model = sake.models.DenseSAKEModel(
@@ -186,6 +184,7 @@ class SPICEBatchLoader:
         _m = i_nums > 0
         m_batch = jnp.einsum("bn,bN->bnN", _m, _m) 
         y_batch = onp.expand_dims(self.y_tr[batch_idxs], -1)
+        jax.debug.print("i_nums: {i_nums}, i_batch: {i_batch}, x_batch: {x_batch}, f_batch: {f_batch}, _m: {_m}, m_batch: {m_batch}, y_batch: {y_batch}")
         return i_batch, x_batch, f_batch, m_batch, y_batch  
 
 if __name__ == "__main__":
