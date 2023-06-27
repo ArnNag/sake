@@ -8,17 +8,17 @@ import sake
 import tqdm
 
 def run(prefix):
-    ds_tr, ds_vl, ds_te = onp.load(prefix + "spice_train.npz"), onp.load(prefix + "spice_val.npz"), onp.load(prefix + "spice_test.npz")
-    i_tr, i_vl, i_te = ds_tr["atomic_numbers"], ds_vl["atomic_numbers"], ds_te["atomic_numbers"]
+    ds_tr = onp.load(prefix + "spice_train.npz")
+    i_tr = ds_tr["atomic_numbers"]
 
     # Index into ELEMENT_MAP is atomic number, value is type number. -99 indicates element not in dataset.
     ELEMENT_MAP = onp.array([ 0,  1, -99,  2, -99, -99,  3,  4,  5,  6, -99,  7,  8, -99, -99,  9, 10, 11, -99, 12, 13, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, 14, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, 15]) 
     NUM_ELEMENTS = 16
-    i_tr, i_vl, i_te = ELEMENT_MAP[i_tr], ELEMENT_MAP[i_vl], ELEMENT_MAP[i_te]
+    i_tr = ELEMENT_MAP[i_tr]
 
-    x_tr, x_vl, x_te = ds_tr["pos"], ds_vl["pos"], ds_te["pos"]
-    f_tr, f_vl, f_te = ds_tr["forces"], ds_vl["forces"], ds_te["forces"]
-    y_tr, y_vl, y_te = ds_tr["total_energy"], ds_vl["total_energy"], ds_te["total_energy"]
+    x_tr = ds_tr["pos"]
+    f_tr = ds_tr["forces"]
+    y_tr = ds_tr["total_energy"]
     
     print("loaded all data")
 
@@ -26,7 +26,7 @@ def run(prefix):
         return jnp.sign(m.sum(-1, keepdims=True))
 
     for _var in ["i", "x", "y", "f"]:
-        for _split in ["tr", "vl", "te"]:
+        for _split in ["tr"]:
             locals()["%s_%s" % (_var, _split)] = jnp.array(locals()["%s_%s" % (_var, _split)])
 
     BATCH_SIZE = 32
