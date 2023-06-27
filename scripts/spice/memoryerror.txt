@@ -1,57 +1,50 @@
-2023-06-23 17:25:20.445903: W external/xla/xla/service/hlo_rematerialization.cc:2218] Can't reduce memory use below 8.19GiB (8791031808 bytes) by rematerialization; only reduced to 10.09GiB (10831661829 bytes)
-2023-06-23 17:26:18.955075: W external/tsl/tsl/framework/bfc_allocator.cc:485] Allocator (GPU_0_bfc) ran out of memory trying to allocate 14.48GiB (rounded to 15551572224)requested by op 
-2023-06-23 17:26:18.956369: W external/tsl/tsl/framework/bfc_allocator.cc:497] *___________________________________________________________________________________________________
-2023-06-23 17:26:18.964708: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2461] Execution of replica 0 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 15551572000 bytes.
+2023-06-27 10:21:27.745832: W external/tsl/tsl/framework/bfc_allocator.cc:485] Allocator (GPU_0_bfc) ran out of memory trying to allocate 12.20GiB (rounded to 13094714880)requested by op 
+2023-06-27 10:21:27.748167: W external/tsl/tsl/framework/bfc_allocator.cc:497] ********************________________________________________________________________________________
+2023-06-27 10:21:27.760988: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2461] Execution of replica 0 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 13094714656 bytes.
 BufferAssignment OOM Debugging.
 BufferAssignment stats:
-             parameter allocation:    9.93MiB
-              constant allocation:    4.07MiB
-        maybe_live_out allocation:    9.59MiB
-     preallocated temp allocation:   14.48GiB
-  preallocated temp fragmentation:    16.6KiB (0.00%)
-                 total allocation:   14.51GiB
-              total fragmentation:    4.19MiB (0.03%)
+             parameter allocation:    1.42GiB
+              constant allocation:        48B
+        maybe_live_out allocation:    9.60MiB
+     preallocated temp allocation:   12.20GiB
+  preallocated temp fragmentation:   14.37MiB (0.12%)
+                 total allocation:   13.62GiB
+              total fragmentation:   14.45MiB (0.10%)
 Peak buffers:
 	Buffer 1:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d0/d0.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Size: 616.86MiB
+		Entry Parameter Subshape: f32[898367,60,3]
 		==========================
 
 	Buffer 2:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d5/d5.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Size: 616.86MiB
+		Entry Parameter Subshape: f32[898367,60,3]
 		==========================
 
 	Buffer 3:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d4/d4.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Size: 205.62MiB
+		Entry Parameter Subshape: s32[898367,60]
 		==========================
 
 	Buffer 4:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d2/d2.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
+		Size: 112.50MiB
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d2/d2.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57 deduplicated_name="fusion.2141"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Shape: f32[32,60,60,256]
 		==========================
 
 	Buffer 5:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d1/d1.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
+		Size: 112.50MiB
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d2/d2.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57 deduplicated_name="fusion.2141"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Shape: f32[32,60,60,256]
 		==========================
 
 	Buffer 6:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d3/d3.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
+		Size: 112.50MiB
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d2/d2.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57 deduplicated_name="fusion.2141"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Shape: f32[32,60,60,256]
 		==========================
 
 	Buffer 7:
@@ -62,67 +55,65 @@ Peak buffers:
 
 	Buffer 8:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d4/d4.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 9:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d4/d4.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 10:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d4/d4.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d5/d5.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
+		XLA Label: custom-call
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 11:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d5/d5.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d4/d4.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
+		XLA Label: custom-call
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 12:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d5/d5.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d3/d3.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
+		XLA Label: custom-call
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 13:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d5/d5.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d2/d2.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
+		XLA Label: custom-call
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 14:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d5/d5.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d1/d1.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
 		XLA Label: custom-call
 		Shape: f32[115200,256]
 		==========================
 
 	Buffer 15:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d4/d4.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d0/d0.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
 		XLA Label: custom-call
 		Shape: f32[115200,256]
 		==========================
 
 
 Traceback (most recent call last):
-  File "/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py", line 177, in <module>
+  File "/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py", line 190, in <module>
     run(sys.argv[1])
-  File "/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py", line 169, in run
-    state = epoch(state, i_tr, x_tr, m_tr, f_tr, y_tr)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py", line 155, in run
+    state = epoch(state, i_tr, x_tr, f_tr, y_tr)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/home/naglea/miniconda3/envs/jax/lib/python3.11/site-packages/jax/_src/traceback_util.py", line 166, in reraise_with_filtered_traceback
     return fun(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^
@@ -156,57 +147,51 @@ Traceback (most recent call last):
   File "/home/naglea/miniconda3/envs/jax/lib/python3.11/site-packages/jax/_src/interpreters/pxla.py", line 1347, in __call__
     results = self.xla_executable.execute_sharded(
               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-jax._src.traceback_util.UnfilteredStackTrace: jaxlib.xla_extension.XlaRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 15551572000 bytes.
+jax._src.traceback_util.UnfilteredStackTrace: jaxlib.xla_extension.XlaRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 13094714656 bytes.
 BufferAssignment OOM Debugging.
 BufferAssignment stats:
-             parameter allocation:    9.93MiB
-              constant allocation:    4.07MiB
-        maybe_live_out allocation:    9.59MiB
-     preallocated temp allocation:   14.48GiB
-  preallocated temp fragmentation:    16.6KiB (0.00%)
-                 total allocation:   14.51GiB
-              total fragmentation:    4.19MiB (0.03%)
+             parameter allocation:    1.42GiB
+              constant allocation:        48B
+        maybe_live_out allocation:    9.60MiB
+     preallocated temp allocation:   12.20GiB
+  preallocated temp fragmentation:   14.37MiB (0.12%)
+                 total allocation:   13.62GiB
+              total fragmentation:   14.45MiB (0.10%)
 Peak buffers:
 	Buffer 1:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d0/d0.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Size: 616.86MiB
+		Entry Parameter Subshape: f32[898367,60,3]
 		==========================
 
 	Buffer 2:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d5/d5.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Size: 616.86MiB
+		Entry Parameter Subshape: f32[898367,60,3]
 		==========================
 
 	Buffer 3:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d4/d4.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Size: 205.62MiB
+		Entry Parameter Subshape: s32[898367,60]
 		==========================
 
 	Buffer 4:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d2/d2.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
+		Size: 112.50MiB
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d2/d2.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57 deduplicated_name="fusion.2141"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Shape: f32[32,60,60,256]
 		==========================
 
 	Buffer 5:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d1/d1.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
+		Size: 112.50MiB
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d2/d2.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57 deduplicated_name="fusion.2141"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Shape: f32[32,60,60,256]
 		==========================
 
 	Buffer 6:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d3/d3.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
+		Size: 112.50MiB
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d2/d2.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57 deduplicated_name="fusion.2141"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Shape: f32[32,60,60,256]
 		==========================
 
 	Buffer 7:
@@ -217,56 +202,54 @@ Peak buffers:
 
 	Buffer 8:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d4/d4.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 9:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d4/d4.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 10:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d4/d4.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d5/d5.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
+		XLA Label: custom-call
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 11:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d5/d5.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d4/d4.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
+		XLA Label: custom-call
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 12:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d5/d5.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d3/d3.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
+		XLA Label: custom-call
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 13:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d5/d5.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d2/d2.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
+		XLA Label: custom-call
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 14:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d5/d5.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d1/d1.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
 		XLA Label: custom-call
 		Shape: f32[115200,256]
 		==========================
 
 	Buffer 15:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d4/d4.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d0/d0.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
 		XLA Label: custom-call
 		Shape: f32[115200,256]
 		==========================
@@ -279,62 +262,56 @@ The preceding is the original exception that occurred, unmodified.
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py", line 177, in <module>
+  File "/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py", line 190, in <module>
     run(sys.argv[1])
-  File "/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py", line 169, in run
-    state = epoch(state, i_tr, x_tr, m_tr, f_tr, y_tr)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-jaxlib.xla_extension.XlaRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 15551572000 bytes.
+  File "/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py", line 155, in run
+    state = epoch(state, i_tr, x_tr, f_tr, y_tr)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+jaxlib.xla_extension.XlaRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 13094714656 bytes.
 BufferAssignment OOM Debugging.
 BufferAssignment stats:
-             parameter allocation:    9.93MiB
-              constant allocation:    4.07MiB
-        maybe_live_out allocation:    9.59MiB
-     preallocated temp allocation:   14.48GiB
-  preallocated temp fragmentation:    16.6KiB (0.00%)
-                 total allocation:   14.51GiB
-              total fragmentation:    4.19MiB (0.03%)
+             parameter allocation:    1.42GiB
+              constant allocation:        48B
+        maybe_live_out allocation:    9.60MiB
+     preallocated temp allocation:   12.20GiB
+  preallocated temp fragmentation:   14.37MiB (0.12%)
+                 total allocation:   13.62GiB
+              total fragmentation:   14.45MiB (0.10%)
 Peak buffers:
 	Buffer 1:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d0/d0.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Size: 616.86MiB
+		Entry Parameter Subshape: f32[898367,60,3]
 		==========================
 
 	Buffer 2:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d5/d5.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Size: 616.86MiB
+		Entry Parameter Subshape: f32[898367,60,3]
 		==========================
 
 	Buffer 3:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d4/d4.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Size: 205.62MiB
+		Entry Parameter Subshape: s32[898367,60]
 		==========================
 
 	Buffer 4:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d2/d2.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
+		Size: 112.50MiB
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d2/d2.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57 deduplicated_name="fusion.2141"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Shape: f32[32,60,60,256]
 		==========================
 
 	Buffer 5:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d1/d1.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
+		Size: 112.50MiB
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d2/d2.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57 deduplicated_name="fusion.2141"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Shape: f32[32,60,60,256]
 		==========================
 
 	Buffer 6:
-		Size: 337.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d3/d3.spatial_attention/reduce_sum[axes=(3,)]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.1072"
+		Size: 112.50MiB
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d2/d2.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57 deduplicated_name="fusion.2141"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256,3]
+		Shape: f32[32,60,60,256]
 		==========================
 
 	Buffer 7:
@@ -345,56 +322,54 @@ Peak buffers:
 
 	Buffer 8:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d4/d4.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 9:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d4/d4.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
 		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 10:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d4/d4.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d5/d5.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
+		XLA Label: custom-call
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 11:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d5/d5.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d4/d4.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
+		XLA Label: custom-call
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 12:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d5/d5.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d3/d3.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
+		XLA Label: custom-call
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 13:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/transpose(jvp(jit(get_e_pred)))/Model/model/d5/d5.spatial_attention/x_mixing/mul" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62 deduplicated_name="fusion.2130"
-		XLA Label: fusion
-		Shape: f32[32,60,60,256]
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d2/d2.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
+		XLA Label: custom-call
+		Shape: f32[115200,256]
 		==========================
 
 	Buffer 14:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d5/d5.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d1/d1.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
 		XLA Label: custom-call
 		Shape: f32[115200,256]
 		==========================
 
 	Buffer 15:
 		Size: 112.50MiB
-		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d4/d4.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=62
+		Operator: op_name="jit(epoch)/jit(main)/while/body/jit(step_with_loss)/jvp(jit(get_e_pred_sum))/jvp(jit(get_e_pred))/Model/model/d0/d0.spatial_attention/x_mixing/layers_0/dot_general[dimension_numbers=(((3,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/lila/data/chodera/naglea/sake/scripts/spice/run_batch_force_loss.py" source_line=57
 		XLA Label: custom-call
 		Shape: f32[115200,256]
 		==========================
