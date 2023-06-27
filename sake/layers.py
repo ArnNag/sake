@@ -116,14 +116,14 @@ class DenseSAKELayer(SAKELayer):
 
         # (batch_size, n, n, coefficients, 3)
         # combinations = jnp.expand_dims(x_minus_xt, -2) * jnp.expand_dims(coefficients, -1)
-        combinations = jnp.einsum('bnNx,bnNc->bnNcx', x_minus_xt, coefficients)
+        combinations = jnp.einsum("bnNx,bnNc->bnNcx", x_minus_xt, coefficients)
 
         if mask is not None:
             # _mask = jnp.expand_dims(jnp.expand_dims(mask, -1), -1)
             # combinations = combinations * _mask
             combinations = jnp.einsum("bnNcx,bnN->bnNcx", combinations, mask)
             # combinations_sum = combinations.sum(axis=-3) / (_mask.sum(axis=-3) + 1e-8)
-            combinations_sum = jnp.einsum('bnNcx,bn->bncx', combinations, 1 / (mask.sum(axis=-1) + 1e-8))
+            combinations_sum = jnp.einsum("bnNcx,bn->bncx", combinations, 1 / (mask.sum(axis=-1) + 1e-8))
 
 
         else:
@@ -288,6 +288,7 @@ class SparseSAKELayer(SAKELayer):
     def spatial_attention(self, h_e_mtx, x_minus_xt, x_minus_xt_norm, idxs):
         # (batch_size, n, n, n_coefficients)
         # coefficients = self.coefficients_mlp(h_e_mtx)# .unsqueeze(-1)
+        jax.debug.print("h_e_mtx shape: {}", h_e_mtx.shape)
         coefficients = self.x_mixing(h_e_mtx)
 
         # (batch_size, n, n, 3)
