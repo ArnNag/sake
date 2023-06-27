@@ -108,7 +108,6 @@ class DenseSAKELayer(SAKELayer):
     def spatial_attention(self, h_e_mtx, x_minus_xt, x_minus_xt_norm, mask=None):
         # (batch_size, n, n, n_coefficients)
         # coefficients = self.coefficients_mlp(h_e_mtx)# .unsqueeze(-1)
-        jax.debug.print("h_e_mtx shape: {}", h_e_mtx.shape)
         coefficients = self.x_mixing(h_e_mtx)
 
         # (batch_size, n, n, 3)
@@ -401,6 +400,7 @@ class SparseSAKELayer(SAKELayer):
         euclidean_attention, semantic_attention, combined_attention = self.combined_attention(x_minus_xt_norm, h_e_mtx, mask=mask)
         h_e_att = jnp.expand_dims(h_e_mtx, -1) * jnp.expand_dims(combined_attention, -2)
         h_e_att = jnp.reshape(h_e_att, h_e_att.shape[:-2] + (-1, ))
+        jax.debug.print("h_e_att shape: {}", h_e_att.shape)
         h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, mask=mask)
 
         if not self.use_spatial_attention:
