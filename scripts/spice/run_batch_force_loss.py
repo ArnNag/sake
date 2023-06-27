@@ -184,7 +184,7 @@ class SPICEBatchLoader:
         _m = i_nums > 0
         m_batch = jnp.einsum("bn,bN->bnN", _m, _m) 
         y_batch = onp.expand_dims(self.y_tr[batch_idxs], -1)
-        jax.debug.print("i_nums: {i_nums}, i_batch: {i_batch}, x_batch: {x_batch}, f_batch: {f_batch}, _m: {_m}, m_batch: {m_batch}, y_batch: {y_batch}", i_nums=i_nums, i_batch=i_batch, x_batch=x_batch, f_batch=f_batch, _m=_m, m_batch=m_batch, y_batch=y_batch)
+        jax.debug.print("i_nums: {i_nums}, i_batch: {i_batch}, x_batch: {x_batch}, f_batch: {f_batch}, _m: {_m}, m_batch: {m_batch}, y_batch: {y_batch}", i_nums=i_nums.shape, i_batch=i_batch.shape, x_batch=x_batch.shape, f_batch=f_batch.shape, _m=_m.shape, m_batch=m_batch.shape, y_batch=y_batch.shape)
         return i_batch, x_batch, f_batch, m_batch, y_batch  
 
 if __name__ == "__main__":
