@@ -63,8 +63,14 @@ def run(prefix):
     model = Model()
 
 
+    '''
+    i: (num_atoms, num_elements)
+    x: (num_atoms, 3)
+    m: TODO
+    e_pred: scalar
+    '''
     @jax.jit
-    def get_e_pred(params, i, x, m):
+    def get_e_pred_single(params, i, x, m):
         jax.debug.print("i.shape: {}, x.shape: {}", i.shape, x.shape)
         e_pred = model.apply(params, i, x, m)
         jax.debug.print("e_pred.shape before coloring: {}", e_pred.shape)
@@ -72,7 +78,7 @@ def run(prefix):
         jax.debug.print("e_pred.shape after coloring: {}", e_pred.shape)
         return e_pred
 
-    get_negative_f_pred = jax.jit(jax.grad(get_e_pred, argnums=(2)))
+    get_negative_f_pred = jax.jit(jax.vmap(jax.grad(get_e_pred_single, argnums=2)))
 
     def loss_fn(params, i, x, m, f, y):
         e_pred = get_e_pred(params, i, x, m)
