@@ -65,16 +65,12 @@ def run(prefix):
 
     @jax.jit
     def get_e_pred(params, i, x, m):
-        jax.debug.print("i.shape: {}, x.shape: {}, m.shape: {}", i.shape, x.shape, m.shape)
         e_pred = model.apply(params, i, x, m)
-        jax.debug.print("e_pred.shape before coloring: {}", e_pred.shape)
         e_pred = coloring(e_pred)
-        jax.debug.print("e_pred.shape after coloring: {}", e_pred.shape)
         return e_pred
 
     def get_e_pred_sum(params, i, x, m):
         e_pred = get_e_pred(params, i, x, m)
-        jax.debug.print("e_pred.sum(): {}", e_pred.sum())
         return -e_pred.sum()
 
     get_f_pred = jax.jit(jax.grad(get_e_pred_sum, argnums=(2)))
@@ -82,10 +78,6 @@ def run(prefix):
     def loss_fn(params, i, x, m, f, y):
         e_pred = get_e_pred(params, i, x, m)
         f_pred = get_f_pred(params, i, x, m)
-        jax.debug.print("e_pred loss shape: {}", e_pred.shape)
-        jax.debug.print("y loss shape: {}", y.shape)
-        jax.debug.print("f_pred loss shape: {}", f_pred.shape)
-        jax.debug.print("f loss shape: {}", f.shape)
         e_loss = jnp.abs(e_pred - y).mean()
         f_loss = jnp.abs(f_pred - f).mean()
         return f_loss + e_loss * 0.001
@@ -123,7 +115,7 @@ def run(prefix):
         return state
 
     init_loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, 2666, BATCH_SIZE, NUM_ELEMENTS)
-    i0, x0, m0, _, _ = init_loader.get_batch(0)
+    i0, x0, m0, _, __ = init_loader.get_batch(0)
 
     key = jax.random.PRNGKey(2666)
     params = model.init(key, i0, x0, m0)
