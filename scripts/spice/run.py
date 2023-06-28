@@ -66,7 +66,6 @@ def run(prefix):
     @jax.jit
     def get_e_pred(params, i, x, m):
         jax.debug.print("i.shape: {}, x.shape: {}", i.shape, x.shape)
-        i_tr = jnp.broadcast_to(i, (*x.shape[:-1], i.shape[-1]))
         jax.debug.print("i_tr.shape: {}", i_tr.shape)
         e_pred = model.apply(params, i_tr, x, m)
         jax.debug.print("e_pred.shape before sum: {}", e_pred.shape)
