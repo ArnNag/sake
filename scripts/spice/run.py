@@ -65,14 +65,20 @@ def run(prefix):
 
     @jax.jit
     def get_e_pred(params, i, x, m):
+        jax.debug.print("i.shape: {}, x.shape: {}", i.shape, x.shape)
         i_tr = jnp.broadcast_to(i, (*x.shape[:-1], i.shape[-1]))
+        jax.debug.print("i_tr.shape: {}", i_tr.shape)
         e_pred = model.apply(params, i_tr, x, m)
+        jax.debug.print("e_pred.shape before sum: {}", e_pred.shape)
         e_pred = e_pred.sum(axis=-2)
+        jax.debug.print("e_pred.shape after sum: {}", e_pred.shape)
         e_pred = coloring(e_pred)
+        jax.debug.print("e_pred.shape after coloring: {}", e_pred.shape)
         return e_pred
 
     def get_e_pred_sum(params, i, x, m):
         e_pred = get_e_pred(params, i, x, m)
+        jax.debug.print("e_pred.sum(): {}", e_pred.sum())
         return -e_pred.sum()
 
     get_f_pred = jax.jit(jax.grad(get_e_pred_sum, argnums=(2)))
