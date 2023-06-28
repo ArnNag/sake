@@ -65,11 +65,9 @@ def run(prefix):
 
     @jax.jit
     def get_e_pred(params, i, x, m):
-        jax.debug.print("i.shape: {}, x.shape: {}", i.shape, x.shape)
+        jax.debug.print("i.shape: {}, x.shape: {}, m.shape: {}", i.shape, x.shape, m.shape)
         e_pred = model.apply(params, i, x, m)
-        jax.debug.print("e_pred.shape before sum: {}", e_pred.shape)
-        e_pred = e_pred.sum(axis=-2)
-        jax.debug.print("e_pred.shape after sum: {}", e_pred.shape)
+        jax.debug.print("e_pred.shape before coloring: {}", e_pred.shape)
         e_pred = coloring(e_pred)
         jax.debug.print("e_pred.shape after coloring: {}", e_pred.shape)
         return e_pred
