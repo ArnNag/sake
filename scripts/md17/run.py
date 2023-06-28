@@ -12,7 +12,7 @@ def run(data_name):
 
     x = jnp.array(data['pos'][idxs])
     e = jnp.array(data['total_energy'][idxs])
-    i = jnp.array(data['atomic_numbers'])
+    i = jnp.array(data['atomic_numbers'][0])
     f = jnp.array(data['forces'][idxs])
     i = jax.nn.one_hot(i, i.max())
 
