@@ -2,7 +2,6 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax import linen as nn
-from flax import config
 import numpy as onp
 import sake
 from jax_tqdm import loop_tqdm
@@ -73,7 +72,7 @@ def run(prefix):
         e_pred = get_e_pred(params, i, x, m)
         return -e_pred.sum()
 
-    get_f_pred = jax.jit(jax.grad(get_e_pred_sum, argnums=(2)))
+    get_f_pred = jax.jit(jax.grad(get_e_pred_sum, argnums=2))
 
     def loss_fn(params, i, x, m, f, y):
         e_pred = get_e_pred(params, i, x, m)
