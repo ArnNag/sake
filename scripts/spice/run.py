@@ -72,11 +72,15 @@ def run(prefix):
         jax.debug.print("e_pred.shape after coloring: {}", e_pred.shape)
         return e_pred
 
-    get_negative_f_pred = jax.jit(jax.grad(get_e_pred, argnums=(2)))
+    def negative_e_pred(params, i, x, m):
+        e_pred = get_e_pred(params, i, x, m)
+        return -e_pred
+
+    get_f_pred = jax.jit(jax.grad(negative_e_pred, argnums=(2)))
 
     def loss_fn(params, i, x, m, f, y):
         e_pred = get_e_pred(params, i, x, m)
-        f_pred = -get_negative_f_pred(params, i, x, m)
+        f_pred = get_f_pred(params, i, x, m)
         jax.debug.print("e_pred loss shape: {}", e_pred.shape)
         jax.debug.print("y loss shape: {}", f_pred.shape)
         jax.debug.print("f_pred loss shape: {}", f_pred.shape)
