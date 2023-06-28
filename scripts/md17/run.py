@@ -6,18 +6,18 @@ import sake
 import tqdm
 
 def run(data_name):
-    data = onp.load("%s_dft.npz" % data_name)
+    data = onp.load("tiny_spice_train.npz")
     onp.random.seed(2666)
-    idxs = onp.random.permutation(len(data['R']))
+    idxs = onp.random.permutation(len(data["total_energy"]))
 
-    x = jnp.array(data['R'][idxs])
-    e = jnp.array(data['E'][idxs])
-    i = jnp.array(data['z'])
-    f = jnp.array(data['F'][idxs])
+    x = jnp.array(data['pos'][idxs])
+    e = jnp.array(data['total_energy'][idxs])
+    i = jnp.array(data['atomic_numbers'])
+    f = jnp.array(data['forces'][idxs])
     i = jax.nn.one_hot(i, i.max())
 
     batch_size = 4
-    n_tr = n_vl = 1000
+    n_tr = n_vl = 16
     x_tr = x[:n_tr]
     e_tr = e[:n_tr]
     f_tr = f[:n_tr]
@@ -45,14 +45,20 @@ def run(data_name):
 
     @jax.jit
     def get_e_pred(params, x):
+        jax.debug.print("i.shape: {}, x.shape: {}", i.shape, x.shape)
         i_tr = jnp.broadcast_to(i, (*x.shape[:-1], i.shape[-1]))
+        jax.debug.print("i_tr.shape: {}", i_tr.shape)
         e_pred, _, __ = model.apply(params, i_tr, x)
+        jax.debug.print("e_pred.shape before sum: {}", e_pred.shape)
         e_pred = e_pred.sum(axis=-2)
+        jax.debug.print("e_pred.shape after sum: {}", e_pred.shape)
         e_pred = coloring(e_pred)
+        jax.debug.print("e_pred.shape after coloring: {}", e_pred.shape)
         return e_pred
 
     def get_e_pred_sum(params, x):
         e_pred = get_e_pred(params, x)
+        jax.debug.print("e_pred.sum() shape: {}", e_pred.sum())
         return -e_pred.sum()
 
     get_f_pred = jax.jit(lambda params, x: jax.grad(get_e_pred_sum, argnums=(1,))(params, x)[0])
