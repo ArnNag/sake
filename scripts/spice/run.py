@@ -83,9 +83,9 @@ def run(prefix):
         e_pred = get_e_pred(params, i, x, m)
         f_pred = get_f_pred(params, i, x, m)
         jax.debug.print("e_pred loss shape: {}", e_pred.shape)
-        jax.debug.print("y loss shape: {}", f_pred.shape)
+        jax.debug.print("y loss shape: {}", y.shape)
         jax.debug.print("f_pred loss shape: {}", f_pred.shape)
-        jax.debug.print("f loss shape: {}", f_pred.shape)
+        jax.debug.print("f loss shape: {}", f.shape)
         e_loss = jnp.abs(e_pred - y).mean()
         f_loss = jnp.abs(f_pred - f).mean()
         return f_loss + e_loss * 0.001
