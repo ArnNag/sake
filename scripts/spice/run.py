@@ -67,23 +67,24 @@ def run(prefix):
     def get_e_pred(params, i, x, m):
         jax.debug.print("i.shape: {}, x.shape: {}", i.shape, x.shape)
         e_pred = model.apply(params, i, x, m)
-        jax.debug.print("e_pred.shape before sum: {}", e_pred.shape)
-        e_pred = e_pred.sum(axis=-2)
-        jax.debug.print("e_pred.shape after sum: {}", e_pred.shape)
+        jax.debug.print("e_pred.shape before coloring: {}", e_pred.shape)
         e_pred = coloring(e_pred)
         jax.debug.print("e_pred.shape after coloring: {}", e_pred.shape)
         return e_pred
 
-    def get_e_pred_sum(params, i, x, m):
+    def negative_e_pred(params, i, x, m):
         e_pred = get_e_pred(params, i, x, m)
-        jax.debug.print("e_pred.sum(): {}", e_pred.sum())
-        return -e_pred.sum()
+        return -e_pred
 
-    get_f_pred = jax.jit(jax.grad(get_e_pred_sum, argnums=(2)))
+    get_f_pred = jax.jit(jax.grad(negative_e_pred, argnums=(2)))
 
     def loss_fn(params, i, x, m, f, y):
         e_pred = get_e_pred(params, i, x, m)
         f_pred = get_f_pred(params, i, x, m)
+        jax.debug.print("e_pred loss shape: {}", e_pred.shape)
+        jax.debug.print("y loss shape: {}", f_pred.shape)
+        jax.debug.print("f_pred loss shape: {}", f_pred.shape)
+        jax.debug.print("f loss shape: {}", f_pred.shape)
         e_loss = jnp.abs(e_pred - y).mean()
         f_loss = jnp.abs(f_pred - f).mean()
         return f_loss + e_loss * 0.001
