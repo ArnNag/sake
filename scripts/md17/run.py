@@ -11,7 +11,7 @@ def run(data_name):
     idxs = onp.random.permutation(len(data["total_energy"]))
 
     x = jnp.array(data['pos'][idxs])
-    e = jnp.array(data['total_energy'][idxs])
+    e = jnp.expand_dims(jnp.array(data['total_energy'][idxs]), -1)
     i = jnp.array(data['atomic_numbers'][0])
     f = jnp.array(data['forces'][idxs])
     i = jax.nn.one_hot(i, i.max())
