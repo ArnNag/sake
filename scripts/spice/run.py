@@ -142,12 +142,12 @@ def run(prefix):
     )
 
 
-    for idx_batch in range(5):
+    for idx_batch in range(7):
         print("before epoch")
         state = epoch(state, i_tr, x_tr, f_tr, y_tr)
         print("after epoch")
         assert state.opt_state.notfinite_count <= 10
-        save_checkpoint("_" + prefix, target=state, keep=5, step=idx_batch)
+        save_checkpoint("_" + prefix, target=state, keep=7, step=idx_batch)
 
 '''
 Initialize for every epoch with a unique seed.
