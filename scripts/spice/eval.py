@@ -68,7 +68,8 @@ def run(prefix):
 
     model = Model()
 
-    def get_y_hat(params, i, x, m):
+    def get_y_hat(params, i, x):
+        m = make_edge_mask(i.argmax(-1) > 0)
         y_hat = model.apply(params, i, x, m=m)
         y_hat = coloring(y_hat)
         return y_hat
@@ -77,14 +78,9 @@ def run(prefix):
     state = restore_checkpoint("_" + prefix, None)
     params = state['params']
 
-    def _get_y_hat(inputs):
-         x, i = inputs
-         m = make_edge_mask(i.argmax(-1) > 0)
-         return get_y_hat(params, i, x, m)
-    
-    y_tr_hat = jax.lax.map(_get_y_hat, (x_tr, i_tr))
+    y_tr_hat = get_y_hat(params, x_tr, i_tr)
 
-    y_vl_hat = jax.lax.map(_get_y_hat, (x_vl, i_vl))
+    y_vl_hat = get_y_hat(params, x_vl, i_vl)
 
     print(y_tr_hat)
     
