@@ -14,7 +14,7 @@ def run(prefix):
     ds_vl = onp.load(prefix + "spice_valid.npz")
 
     # i_tr = ds_tr["atomic_numbers"]
-    i_vl = ds_vl["atomic_numbers"][:size]
+    i_vl = ds_vl["atomic_numbers"]
 
     # Index into ELEMENT_MAP is atomic number, value is type number. -99 indicates element not in dataset.
     ELEMENT_MAP = onp.array(
