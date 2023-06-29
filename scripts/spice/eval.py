@@ -93,7 +93,7 @@ def run(prefix):
             x_vl_batch = x_vl[batch * BATCH_SIZE:(batch + 1) * BATCH_SIZE]
             i_vl_batch = i_vl[batch * BATCH_SIZE:(batch + 1) * BATCH_SIZE]
             y_vl_hat_all.append(get_y_hat(params, i_vl_batch, x_vl_batch))
-        y_vl_hat = jnp.concatenate(y_vl_hat_all)
+        y_vl_hat = jnp.concatenate(y_vl_hat_all, axis=1)
         print("epoch: ", epoch, "validation:", sake.utils.bootstrap_mae(y_vl_hat, y_vl))
 
 
