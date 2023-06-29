@@ -4,6 +4,7 @@ import optax
 from flax import linen as nn
 import numpy as onp
 import sake
+from functools import partial
 import tqdm
 
 def run(prefix):
@@ -78,6 +79,7 @@ def run(prefix):
     state = restore_checkpoint("_" + prefix, None)
     params = state['params']
 
+    _get_y_hat = unvectorize(lambda i, x: get_y_hat(params, i, x))
     y_tr_hat = get_y_hat(params, i_tr, x_tr)
 
     y_vl_hat = get_y_hat(params, i_vl, x_vl)
@@ -86,6 +88,16 @@ def run(prefix):
     
     print("training", sake.utils.bootstrap_mae(y_tr_hat, y_tr))
     print("validation", sake.utils.bootstrap_mae(y_vl_hat, y_vl))
+
+
+def unvectorize(f, in_axes=None, out_axis=None):
+    def g(*args):
+        in_axes_ = (0,) * len(args) if in_axes is None else in_axes
+        out_axis_ = 0 if out_axis is None else out_axis
+        assert len(args) == len(in_axes_)
+        vargs = [arg if axis is None else jax.tree_map(partial(jnp.expand_dims, axis=axis), arg) for arg, axis in zip(args, in_axes_)]
+        return jax.tree_map(partial(jnp.squeeze, axis=out_axis_), f(*vargs))
+    return g
 
 if __name__ == "__main__":
     import sys
