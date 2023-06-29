@@ -79,10 +79,10 @@ def run(prefix):
     state = restore_checkpoint("_" + prefix, None)
     params = state['params']
 
-    _get_y_hat = unvectorize(lambda i, x: get_y_hat(params, i, x))
-    y_tr_hat = get_y_hat(params, i_tr, x_tr)
+    _get_y_hat = unvectorize(lambda input: get_y_hat(params, input[0], input[1]))
+    y_tr_hat = jax.lax.map(_get_y_hat, (i_tr, x_tr))
+    y_vl_hat = jax.lax.map(_get_y_hat, (i_vl, x_vl))
 
-    y_vl_hat = get_y_hat(params, i_vl, x_vl)
 
     print(y_tr_hat)
     
