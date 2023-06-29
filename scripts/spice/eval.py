@@ -34,7 +34,7 @@ def run(prefix):
             locals()["%s_%s" % (_var, _split)] = jnp.array(locals()["%s_%s" % (_var, _split)])
 
 
-    i_tr, i_vl = jax.nn.one_hot(NUM_ELEMENTS), jax.nn.one_hot(NUM_ELEMENTS)
+    i_tr, i_vl = jax.nn.one_hot(i_tr, NUM_ELEMENTS), jax.nn.one_hot(i_vl, NUM_ELEMENTS)
     m_tr, m_vl = make_edge_mask(m_tr), make_edge_mask(m_vl)
 
     from sake.utils import coloring
