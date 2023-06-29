@@ -9,7 +9,7 @@ import tqdm
 
 
 def run(prefix):
-    size = 800
+    BATCH_SIZE = 800
     ds_tr = onp.load(prefix + "spice_train.npz")
     ds_vl = onp.load(prefix + "spice_valid.npz")
 
@@ -26,11 +26,11 @@ def run(prefix):
     # i_tr = ELEMENT_MAP[i_tr]
     i_vl = ELEMENT_MAP[i_vl]
     # x_tr = ds_tr["pos"]
-    x_vl = ds_vl["pos"][:size]
+    x_vl = ds_vl["pos"]
     # f_tr = ds_tr["forces"]
-    f_vl = ds_vl["forces"][:size]
+    f_vl = ds_vl["forces"]
     y_tr = ds_tr["total_energy"]
-    y_vl = ds_vl["total_energy"][:size]
+    y_vl = ds_vl["total_energy"]
     y_tr = onp.expand_dims(y_tr, -1)
     y_vl = onp.expand_dims(y_vl, -1)
 
@@ -87,9 +87,12 @@ def run(prefix):
     for epoch in range(7):
         state = restore_checkpoint("_" + prefix, None, step=epoch)
         params = state['params']
-
-        y_vl_hat = get_y_hat(params, i_vl, x_vl)
-
+        y_vl_hat_all = []
+        for batch in range(len(x_vl) // BATCH_SIZE):
+            print(batch)
+            x_vl_batch = x_vl[batch * BATCH_SIZE:(batch + 1) * BATCH_SIZE]
+            y_vl_hat_all.append(get_y_hat(params, i_vl, x_vl_batch))
+        y_vl_hat = jnp.concatenate(y_vl_hat_all)
         print("epoch: ", epoch, "validation:", sake.utils.bootstrap_mae(y_vl_hat, y_vl))
 
 
