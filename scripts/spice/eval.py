@@ -21,7 +21,6 @@ def run(prefix):
     y_tr, y_vl = ds_tr["total_energy"], ds_vl["total_energy"]
     
     y_tr, y_vl = onp.expand_dims(y_tr, -1), onp.expand_dims(y_vl, -1)
-    m_tr, m_vl = (i_tr > 0), (i_vl > 0)
 
     def make_edge_mask(m):
         return jnp.expand_dims(m, -1) * jnp.expand_dims(m, -2)
@@ -35,7 +34,6 @@ def run(prefix):
 
 
     i_tr, i_vl = jax.nn.one_hot(i_tr, NUM_ELEMENTS), jax.nn.one_hot(i_vl, NUM_ELEMENTS)
-    m_tr, m_vl = make_edge_mask(m_tr), make_edge_mask(m_vl)
 
     from sake.utils import coloring
     from functools import partial
@@ -80,15 +78,13 @@ def run(prefix):
     params = state['params']
 
     def _get_y_hat(inputs):
-         x, i = jnp.split(inputs, [3], axis=-1)
+         x, i = inputs
          m = make_edge_mask(i.argmax(-1) > 0)
          return get_y_hat(params, i, x, m)
     
-    inputs = jnp.concatenate([x_tr, i_tr], axis=-1)
-    y_tr_hat = jax.lax.map(_get_y_hat, inputs)
+    y_tr_hat = jax.lax.map(_get_y_hat, (x_tr, i_tr))
 
-    inputs = jnp.concatenate([x_vl, i_vl], axis=-1)
-    y_vl_hat = jax.lax.map(_get_y_hat, inputs)
+    y_vl_hat = jax.lax.map(_get_y_hat, (x_vl, i_vl))
 
     print(y_tr_hat)
     
