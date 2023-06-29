@@ -88,13 +88,14 @@ def run(prefix):
         state = restore_checkpoint("_" + prefix, None, step=epoch)
         params = state['params']
         y_vl_hat_all = []
-        for batch in range(len(x_vl) // BATCH_SIZE):
+        num_batches = len(x_vl) // BATCH_SIZE
+        for batch in range():
             print(batch)
             x_vl_batch = x_vl[batch * BATCH_SIZE:(batch + 1) * BATCH_SIZE]
             i_vl_batch = i_vl[batch * BATCH_SIZE:(batch + 1) * BATCH_SIZE]
             y_vl_hat_all.append(get_y_hat(params, i_vl_batch, x_vl_batch))
-        y_vl_hat = jnp.concatenate(y_vl_hat_all, axis=1)
-        print("epoch: ", epoch, "validation:", sake.utils.bootstrap_mae(y_vl_hat, y_vl))
+        y_vl_hat = jnp.concatenate(y_vl_hat_all)
+        print("epoch: ", epoch, "validation:", sake.utils.bootstrap_mae(y_vl_hat, y_vl[:BATCH_NUM * BATCH_SIZE]))
 
 
 if __name__ == "__main__":
