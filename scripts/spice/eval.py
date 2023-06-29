@@ -78,9 +78,9 @@ def run(prefix):
     state = restore_checkpoint("_" + prefix, None)
     params = state['params']
 
-    y_tr_hat = get_y_hat(params, x_tr, i_tr)
+    y_tr_hat = get_y_hat(params, i_tr, x_tr)
 
-    y_vl_hat = get_y_hat(params, x_vl, i_vl)
+    y_vl_hat = get_y_hat(params, i_vl, x_vl)
 
     print(y_tr_hat)
     
