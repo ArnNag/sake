@@ -9,11 +9,12 @@ import tqdm
 
 
 def run(prefix):
+    size = 800
     ds_tr = onp.load(prefix + "spice_train.npz")
     ds_vl = onp.load(prefix + "spice_valid.npz")
 
     # i_tr = ds_tr["atomic_numbers"]
-    i_vl = ds_vl["atomic_numbers"]
+    i_vl = ds_vl["atomic_numbers"][:size]
 
     # Index into ELEMENT_MAP is atomic number, value is type number. -99 indicates element not in dataset.
     ELEMENT_MAP = onp.array(
@@ -25,11 +26,11 @@ def run(prefix):
     # i_tr = ELEMENT_MAP[i_tr]
     i_vl = ELEMENT_MAP[i_vl]
     # x_tr = ds_tr["pos"]
-    x_vl = ds_vl["pos"]
+    x_vl = ds_vl["pos"][:size]
     # f_tr = ds_tr["forces"]
-    f_vl = ds_vl["forces"]
+    f_vl = ds_vl["forces"][:size]
     y_tr = ds_tr["total_energy"]
-    y_vl = ds_vl["total_energy"]
+    y_vl = ds_vl["total_energy"][:size]
     y_tr = onp.expand_dims(y_tr, -1)
     y_vl = onp.expand_dims(y_vl, -1)
 
@@ -83,12 +84,13 @@ def run(prefix):
         return y_hat
 
     from flax.training.checkpoints import restore_checkpoint
-    state = restore_checkpoint("_" + prefix, None)
-    params = state['params']
+    for epoch in range(7):
+        state = restore_checkpoint("_" + prefix, None, step=epoch)
+        params = state['params']
 
-    y_vl_hat = get_y_hat(params, i_vl, x_vl)
+        y_vl_hat = get_y_hat(params, i_vl, x_vl)
 
-    print("validation", sake.utils.bootstrap_mae(y_vl_hat, y_vl))
+        print("epoch: ", epoch, "validation:", sake.utils.bootstrap_mae(y_vl_hat, y_vl))
 
 
 if __name__ == "__main__":
