@@ -89,7 +89,7 @@ def run(prefix):
         params = state['params']
         y_vl_hat_all = []
         num_batches = len(x_vl) // BATCH_SIZE
-        for batch in range():
+        for batch in range(num_batches):
             print(batch)
             x_vl_batch = x_vl[batch * BATCH_SIZE:(batch + 1) * BATCH_SIZE]
             i_vl_batch = i_vl[batch * BATCH_SIZE:(batch + 1) * BATCH_SIZE]
