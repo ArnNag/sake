@@ -83,19 +83,28 @@ def run(prefix):
         y_hat = coloring(y_hat)
         return y_hat
 
+    get_f_hat = jax.grad(get_e_pred_sum, argnums=2)
+
     from flax.training.checkpoints import restore_checkpoint
     for epoch in range(7):
+        print("epoch", epoch, ": ")
         state = restore_checkpoint("_" + prefix, None, step=epoch)
         params = state['params']
         y_vl_hat_all = []
+        f_vl_hat_all = []
         num_batches = len(x_vl) // BATCH_SIZE
         for batch in range(num_batches):
-            print(batch)
             x_vl_batch = x_vl[batch * BATCH_SIZE:(batch + 1) * BATCH_SIZE]
             i_vl_batch = i_vl[batch * BATCH_SIZE:(batch + 1) * BATCH_SIZE]
             y_vl_hat_all.append(get_y_hat(params, i_vl_batch, x_vl_batch))
+            f_vl_hat_all.append(get_f_hat(params, i_vl_batch, x_vl_batch))
+        batched = num_batches * BATCH_SIZE
+        y_vl_hat_all.append(get_y_hat(params, i_vl[batched:], x_vl[batched:]))
+        f_vl_hat_all.append(get_f_hat(params, i_vl[batched:], x_vl[batched:]))
         y_vl_hat = jnp.concatenate(y_vl_hat_all)
-        print("epoch: ", epoch, "validation:", sake.utils.bootstrap_mae(y_vl_hat, y_vl[:num_batches * BATCH_SIZE]))
+        f_vl_hat = jnp.concatenate(f_vl_hat_all)
+        print("validation energy loss:", sake.utils.bootstrap_mae(y_vl_hat, y_vl))
+        print("validation force loss:", sake.utils.bootstrap_mae(f_vl_hat, f_vl))
 
 
 if __name__ == "__main__":
