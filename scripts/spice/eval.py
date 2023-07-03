@@ -83,7 +83,11 @@ def run(prefix):
         y_hat = coloring(y_hat)
         return y_hat
 
-    get_f_hat = jax.grad(get_y_hat, argnums=2)
+    def get_e_pred_sum(params, i, x):
+        e_pred = get_y_hat(params, i, x)
+        return -e_pred.sum()
+
+    get_f_hat = jax.grad(get_e_pred_sum, argnums=2)
 
     from flax.training.checkpoints import restore_checkpoint
     for epoch in range(7):
