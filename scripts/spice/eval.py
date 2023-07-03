@@ -9,7 +9,7 @@ import tqdm
 
 
 def run(prefix):
-    BATCH_SIZE = 800
+    BATCH_SIZE = 200
     ds_tr = onp.load(prefix + "spice_train.npz")
     ds_vl = onp.load(prefix + "spice_valid.npz")
 
@@ -77,36 +77,44 @@ def run(prefix):
 
     model = Model()
 
+    @jax.jit
     def get_y_hat(params, i, x):
         m = make_edge_mask(i.argmax(-1) > 0)
         y_hat = model.apply(params, i, x, m=m)
         y_hat = coloring(y_hat)
         return y_hat
 
+    @jax.jit
     def get_e_pred_sum(params, i, x):
         e_pred = get_y_hat(params, i, x)
         return -e_pred.sum()
+    get_f_hat = jax.jit(jax.grad(get_e_pred_sum, argnums=2))
 
-    get_f_hat = jax.grad(get_e_pred_sum, argnums=2)
+    @jax.jit
+    def predict(params, i, x):
+        y_hat_all = []
+        f_hat_all = []
+        num_batches = len(x) // BATCH_SIZE
+        for batch in range(num_batches):
+            batch_start = batch * BATCH_SIZE
+            batch_end = batch_start + BATCH_SIZE
+            x_batch = x[batch_start:batch_end]
+            i_batch = i[batch_start:batch_end]
+            y_hat_all.append(get_y_hat(params, i_batch, x_batch))
+            f_hat_all.append(get_f_hat(params, i_batch, x_batch))
+        batched = num_batches * BATCH_SIZE
+        y_hat_all.append(get_y_hat(params, i[batched:], x[batched:]))
+        f_hat_all.append(get_f_hat(params, i[batched:], x[batched:]))
+        y_hat = jnp.concatenate(y_hat_all)
+        f_hat = jnp.concatenate(f_hat_all)
+        return f_hat, y_hat
 
     from flax.training.checkpoints import restore_checkpoint
     for epoch in range(7):
         print("epoch", epoch, ": ")
         state = restore_checkpoint("_" + prefix, None, step=epoch)
         params = state['params']
-        y_vl_hat_all = []
-        f_vl_hat_all = []
-        num_batches = len(x_vl) // BATCH_SIZE
-        for batch in range(num_batches):
-            x_vl_batch = x_vl[batch * BATCH_SIZE:(batch + 1) * BATCH_SIZE]
-            i_vl_batch = i_vl[batch * BATCH_SIZE:(batch + 1) * BATCH_SIZE]
-            y_vl_hat_all.append(get_y_hat(params, i_vl_batch, x_vl_batch))
-            f_vl_hat_all.append(get_f_hat(params, i_vl_batch, x_vl_batch))
-        batched = num_batches * BATCH_SIZE
-        y_vl_hat_all.append(get_y_hat(params, i_vl[batched:], x_vl[batched:]))
-        f_vl_hat_all.append(get_f_hat(params, i_vl[batched:], x_vl[batched:]))
-        y_vl_hat = jnp.concatenate(y_vl_hat_all)
-        f_vl_hat = jnp.concatenate(f_vl_hat_all)
+        f_vl_hat, y_vl_hat = predict(params, i_vl, x_vl) 
         print("validation energy loss:", sake.utils.bootstrap_mae(y_vl_hat, y_vl))
         print("validation force loss:", sake.utils.bootstrap_mae(f_vl_hat, f_vl))
 
