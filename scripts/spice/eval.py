@@ -9,7 +9,7 @@ import tqdm
 
 
 def run(prefix):
-    BATCH_SIZE = 200
+    BATCH_SIZE = 512
     ds_tr = onp.load(prefix + "spice_train.npz")
     ds_vl = onp.load(prefix + "spice_valid.npz")
 
@@ -33,6 +33,7 @@ def run(prefix):
     y_vl = ds_vl["total_energy"]
     y_tr = onp.expand_dims(y_tr, -1)
     y_vl = onp.expand_dims(y_vl, -1)
+    print("loaded")
 
     def make_edge_mask(m):
         return jnp.expand_dims(m, -1) * jnp.expand_dims(m, -2)
@@ -90,7 +91,6 @@ def run(prefix):
         return -e_pred.sum()
     get_f_hat = jax.jit(jax.grad(get_e_pred_sum, argnums=2))
 
-    @jax.jit
     def predict(params, i, x):
         y_hat_all = []
         f_hat_all = []
@@ -115,6 +115,8 @@ def run(prefix):
         state = restore_checkpoint("_" + prefix, None, step=epoch)
         params = state['params']
         f_vl_hat, y_vl_hat = predict(params, i_vl, x_vl) 
+        jnp.save(prefix + "_" + str(epoch) + "_energies", y_vl_hat)
+        jnp.save(prefix + "_" + str(epoch) + "_forces", f_vl_hat)
         print("validation energy loss:", sake.utils.bootstrap_mae(y_vl_hat, y_vl))
         print("validation force loss:", sake.utils.bootstrap_mae(f_vl_hat, f_vl))
 
