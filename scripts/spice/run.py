@@ -147,7 +147,7 @@ def run(prefix, batch_size=32, e_loss_factor=1):
         state = epoch(state, i_tr, x_tr, f_tr, y_tr)
         print("after epoch")
         assert state.opt_state.notfinite_count <= 10
-        save_checkpoint(f"_{prefix}_batch_{batch_size}_eloss_{e_loss_factor}", target=state, keep=NUM_EPOCHS, step=idx_batch)
+        save_checkpoint(f"_{prefix}batch_{batch_size}_eloss_{e_loss_factor}", target=state, keep=NUM_EPOCHS, step=idx_batch)
 
 '''
 Initialize for every epoch with a unique seed.
@@ -178,4 +178,4 @@ class SPICEBatchLoader:
 
 if __name__ == "__main__":
     import sys
-    run(*sys.argv)
+    run(sys.argv[1], int(sys.argv[2]), float(sys.argv[3]))
