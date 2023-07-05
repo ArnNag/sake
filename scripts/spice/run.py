@@ -6,7 +6,7 @@ import numpy as onp
 import sake
 from jax_tqdm import loop_tqdm
 
-def run(prefix):
+def run(prefix, batch_size=32, e_loss_factor=1):
     ds_tr = onp.load(prefix + "spice_train.npz")
     i_tr = ds_tr["atomic_numbers"]
 
@@ -17,7 +17,7 @@ def run(prefix):
 
     x_tr = ds_tr["pos"]
     f_tr = ds_tr["forces"]
-    y_tr = ds_tr["total_energy"]
+    y_tr = ds_tr["formation_energy"]
     
     print("loaded all data")
 
@@ -28,8 +28,7 @@ def run(prefix):
         for _split in ["tr"]:
             locals()["%s_%s" % (_var, _split)] = jnp.array(locals()["%s_%s" % (_var, _split)])
 
-    BATCH_SIZE = 32
-    N_BATCHES = len(i_tr) // BATCH_SIZE
+    N_BATCHES = len(i_tr) // batch_size
 
     from sake.utils import coloring
     from functools import partial
@@ -79,7 +78,7 @@ def run(prefix):
         f_pred = get_f_pred(params, i, x, m)
         e_loss = jnp.abs(e_pred - y).mean()
         f_loss = jnp.abs(f_pred - f).mean()
-        return f_loss + e_loss * 0.001
+        return f_loss + e_loss * e_loss_factor
 
     @jax.jit
     def step_with_loss(state, i, x, m, f, y):
@@ -90,7 +89,7 @@ def run(prefix):
     
     @jax.jit
     def epoch(state, i_tr, x_tr, f_tr, y_tr):
-        loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, state.step, BATCH_SIZE, NUM_ELEMENTS)
+        loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, state.step, batch_size, NUM_ELEMENTS)
 
         @loop_tqdm(N_BATCHES)
         def loop_body(idx, state):
@@ -113,7 +112,7 @@ def run(prefix):
         state = jax.lax.fori_loop(0, n, loop_body, state)
         return state
 
-    init_loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, 2666, BATCH_SIZE, NUM_ELEMENTS)
+    init_loader = SPICEBatchLoader(i_tr, x_tr, f_tr, y_tr, 2666, batch_size, NUM_ELEMENTS)
     i0, x0, m0, _, __ = init_loader.get_batch(0)
 
     key = jax.random.PRNGKey(2666)
@@ -142,12 +141,13 @@ def run(prefix):
     )
 
 
-    for idx_batch in range(7):
+    NUM_EPOCHS = 100
+    for idx_batch in range(NUM_EPOCHS):
         print("before epoch")
         state = epoch(state, i_tr, x_tr, f_tr, y_tr)
         print("after epoch")
         assert state.opt_state.notfinite_count <= 10
-        save_checkpoint("_" + prefix, target=state, keep=7, step=idx_batch)
+        save_checkpoint(f"_{prefix}_batch_{batch_size}_eloss_{e_loss_factor}", target=state, keep=NUM_EPOCHS, step=idx_batch)
 
 '''
 Initialize for every epoch with a unique seed.
@@ -178,4 +178,4 @@ class SPICEBatchLoader:
 
 if __name__ == "__main__":
     import sys
-    run(sys.argv[1])
+    run(*sys.argv)
