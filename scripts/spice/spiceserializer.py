@@ -46,7 +46,7 @@ class SPICESerializer:
             pad_num = self.max_atom_num - len(atom_nums)
             padded_atom_nums = np.pad(atom_nums, (0, pad_num))
             padded_pos = np.pad(pos_arr, ((0, 0), (0, pad_num), (0, 0)))
-            padded_grads = np.pad(grads, ((0, 0), (0, pad_num), (0, 0)))
+            padded_grads = np.pad(grads_arr, ((0, 0), (0, pad_num), (0, 0)))
             all_atom_nums.append([padded_atom_nums for conf in range(len(pos_arr))])
             # all_total_energies.append(total_energy_arr)
             all_form_energies.append(form_energy_arr)
