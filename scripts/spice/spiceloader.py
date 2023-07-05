@@ -33,26 +33,26 @@ class SPICESerializer:
         all_atom_nums = []
         # all_total_energies = []
         all_form_energies = []
-        all_forces = []
+        all_grads = []
         for name in names:
             atom_nums = np.array(self.data[name]['atomic_numbers'], np.uint8)
             if len(atom_nums) > self.max_atom_num:
                 print("Skipping: ", name)
                 continue
             pos_arr = self.data[name]['conformations']
-            forces_arr = -self.data[name]['dft_total_gradient']
+            grads_arr = -self.data[name]['dft_total_gradient']
             # total_energy_arr = self.data[name]['dft_total_energy']
             form_energy_arr = self.data[name]['formation_energy']
             pad_num = self.max_atom_num - len(atom_nums)
             padded_atom_nums = np.pad(atom_nums, (0, pad_num))
             padded_pos = np.pad(pos_arr, ((0, 0), (0, pad_num), (0, 0)))
-            padded_forces = np.pad(forces_arr, ((0, 0), (0, pad_num), (0, 0)))
+            padded_grads = np.pad(grads, ((0, 0), (0, pad_num), (0, 0)))
             all_atom_nums.append([padded_atom_nums for conf in range(len(pos_arr))])
             # all_total_energies.append(total_energy_arr)
             all_form_energies.append(form_energy_arr)
-            all_forces.append(padded_forces)
+            all_grads.append(padded_grads)
             all_pos.append(padded_pos)
-        np.savez(out_path, atomic_numbers=np.concatenate(all_atom_nums), formation_energy=np.concatenate(all_form_energies), forces=np.concatenate(all_forces), pos=np.concatenate(all_pos))
+        np.savez(out_path, atomic_numbers=np.concatenate(all_atom_nums), formation_energy=np.concatenate(all_form_energies), forces=-np.concatenate(all_grads), pos=np.concatenate(all_pos))
 
 if __name__ == "__main__": 
 	spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', sys.argv[1], train_ratio=float(sys.argv[2]), test_ratio=float(sys.argv[3]), max_atom_num=int(sys.argv[4]))
