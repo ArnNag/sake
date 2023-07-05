@@ -20,7 +20,7 @@ def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
     y_tr = ds_tr["formation_energy"]
 
     if subset is not None: 
-        select = (ds["subsets"] == subset)
+        select = (ds_tr["subsets"] == subset)
         i_tr, x_tr, f_tr, y_tr = i_tr[select], x_tr[select], f_tr[select], y_tr[select] 
     
     print("loaded all data")
@@ -151,7 +151,7 @@ def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
         state = epoch(state, i_tr, x_tr, f_tr, y_tr)
         print("after epoch")
         assert state.opt_state.notfinite_count <= 10
-        save_checkpoint(f"_{prefix}batch_{batch_size}_eloss_{e_loss_factor}", target=state, keep=NUM_EPOCHS, step=idx_batch)
+        save_checkpoint(f"_{prefix}batch_{batch_size}_eloss_{e_loss_factor:e}_subset_{subset}", target=state, keep_every_n_steps=10, step=idx_batch)
 
 '''
 Initialize for every epoch with a unique seed.
@@ -182,4 +182,4 @@ class SPICEBatchLoader:
 
 if __name__ == "__main__":
     import sys
-    run(sys.argv[1], int(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4])))
+    run(sys.argv[1], int(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]))
