@@ -6,7 +6,7 @@ import numpy as onp
 import sake
 from jax_tqdm import loop_tqdm
 
-def run(prefix, batch_size=32, e_loss_factor=1):
+def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
     ds_tr = onp.load(prefix + "spice_train.npz")
     i_tr = ds_tr["atomic_numbers"]
 
@@ -18,6 +18,10 @@ def run(prefix, batch_size=32, e_loss_factor=1):
     x_tr = ds_tr["pos"]
     f_tr = ds_tr["forces"]
     y_tr = ds_tr["formation_energy"]
+
+    if subset is not None: 
+        select = (ds["subsets"] == subset)
+        i_tr, x_tr, f_tr, y_tr = i_tr[select], x_tr[select], f_tr[select], y_tr[select] 
     
     print("loaded all data")
 
@@ -178,4 +182,4 @@ class SPICEBatchLoader:
 
 if __name__ == "__main__":
     import sys
-    run(sys.argv[1], int(sys.argv[2]), float(sys.argv[3]))
+    run(sys.argv[1], int(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4])))
