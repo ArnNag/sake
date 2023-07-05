@@ -13,6 +13,7 @@ class SPICESerializer:
         self.names = list(self.data.keys())
         key = jax.random.PRNGKey(seed)
         self.max_atom_num = max_atom_num
+        self.SUBSET_MAP = {"SPICE Dipeptides Single Points Dataset v1.2" : 0, "SPICE Solvated Amino Acids Single Points Dataset v1.1" : 1, "SPICE DES370K Single Points Dataset v1.0" : 2, "SPICE DES370K Single Points Dataset Supplement v1.0" : 2, "SPICE DES Monomers Single Points Dataset v1.1" : 3, "SPICE PubChem Set 1 Single Points Dataset v1.2": 4, "SPICE PubChem Set 2 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 3 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 4 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 5 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 6 Single Points Dataset v1.2" : 4, "SPICE Ion Pairs Single Points Dataset v1.1" : 5} 
         self.test_names, self.train_names, self.val_names = self._split(key, train_ratio, test_ratio)
         self._make_npz(self.train_names, out_prefix + "spice_train")
         self._make_npz(self.test_names, out_prefix + "spice_test")
@@ -34,6 +35,8 @@ class SPICESerializer:
         # all_total_energies = []
         all_form_energies = []
         all_grads = []
+        all_subsets = []
+        all_names = []
         for name in names:
             atom_nums = np.array(self.data[name]['atomic_numbers'], np.uint8)
             if len(atom_nums) > self.max_atom_num:
@@ -48,11 +51,13 @@ class SPICESerializer:
             padded_pos = np.pad(pos_arr, ((0, 0), (0, pad_num), (0, 0)))
             padded_grads = np.pad(grads_arr, ((0, 0), (0, pad_num), (0, 0)))
             all_atom_nums.append([padded_atom_nums for conf in range(len(pos_arr))])
+            all_subsets.append([self.SUBSET_MAP[self.data[name]['subset'][0]] for conf in range(len(pos_arr))])
+            all_names.append([name for conf in range(len(pos_arr))])
             # all_total_energies.append(total_energy_arr)
             all_form_energies.append(form_energy_arr)
             all_grads.append(padded_grads)
             all_pos.append(padded_pos)
-        np.savez(out_path, atomic_numbers=np.concatenate(all_atom_nums), formation_energy=np.concatenate(all_form_energies), forces=-np.concatenate(all_grads), pos=np.concatenate(all_pos))
+        np.savez(out_path, atomic_numbers=np.concatenate(all_atom_nums), formation_energy=np.concatenate(all_form_energies), forces=-np.concatenate(all_grads), pos=np.concatenate(all_pos), names=np.concatenate(all_names), subsets=np.concatenate(all_subsets))
 
 if __name__ == "__main__": 
 	spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', sys.argv[1], train_ratio=float(sys.argv[2]), test_ratio=float(sys.argv[3]), max_atom_num=int(sys.argv[4]))
