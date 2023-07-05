@@ -40,7 +40,7 @@ class SPICESerializer:
                 print("Skipping: ", name)
                 continue
             pos_arr = self.data[name]['conformations']
-            grads_arr = -self.data[name]['dft_total_gradient']
+            grads_arr = self.data[name]['dft_total_gradient']
             # total_energy_arr = self.data[name]['dft_total_energy']
             form_energy_arr = self.data[name]['formation_energy']
             pad_num = self.max_atom_num - len(atom_nums)
