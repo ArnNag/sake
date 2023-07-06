@@ -6,12 +6,15 @@ import numpy as onp
 import sake
 from functools import partial
 import tqdm
+import os
 
 
-def run(prefix):
+def run(path):
     BATCH_SIZE = 512
+    prefix = path[1:path.rfind("batch")]
+    print("prefix: ", prefix)
     ds_tr = onp.load(prefix + "spice_train.npz")
-    ds_vl = onp.load(prefix + "spice_valid.npz")
+    ds_vl = onp.load(prefix + "spice_val.npz")
 
     # i_tr = ds_tr["atomic_numbers"]
     i_vl = ds_vl["atomic_numbers"]
@@ -29,8 +32,8 @@ def run(prefix):
     x_vl = ds_vl["pos"]
     # f_tr = ds_tr["forces"]
     f_vl = ds_vl["forces"]
-    y_tr = ds_tr["total_energy"]
-    y_vl = ds_vl["total_energy"]
+    y_tr = ds_tr["formation_energy"]
+    y_vl = ds_vl["formation_energy"]
     y_tr = onp.expand_dims(y_tr, -1)
     y_vl = onp.expand_dims(y_vl, -1)
     print("loaded")
@@ -110,18 +113,24 @@ def run(prefix):
         return f_hat, y_hat
 
     from flax.training.checkpoints import restore_checkpoint
-    for epoch in range(7):
-        print("epoch", epoch, ": ")
-        state = restore_checkpoint("_" + prefix, None, step=epoch)
-        params = state['params']
-        f_vl_hat, y_vl_hat = predict(params, i_vl, x_vl) 
-        jnp.save(prefix + "_" + str(epoch) + "_energies", y_vl_hat)
-        jnp.save(prefix + "_" + str(epoch) + "_forces", f_vl_hat)
-        print("validation energy loss:", sake.utils.bootstrap_mae(y_vl_hat, y_vl))
-        print("validation force loss:", sake.utils.bootstrap_mae(f_vl_hat, f_vl))
+    save_path = f"val{path}"
+    os.mkdir(save_path)
+    print("save_path: ", save_path)
+    with open(os.path.join(save_path, "losses"), "x") as losses:
+        for checkpoint in os.listdir(path):
+            print(checkpoint)
+            losses.write(checkpoint)
+            checkpoint_path = os.path.join(path, checkpoint, "checkpoint")
+            print("checkpoint_path: ", checkpoint_path)
+            state = restore_checkpoint(checkpoint_path, None)
+            params = state['params']
+            f_vl_hat, y_vl_hat = predict(params, i_vl, x_vl) 
+            jnp.save(os.path.join(save_path, "{checkpoint}_energies"), y_vl_hat)
+            jnp.save(os.path.join(save_path, "{checkpoint}_forces"), f_vl_hat)
+            losses.write("validation energy loss:", sake.utils.bootstrap_mae(y_vl_hat, y_vl))
+            losses.write("validation force loss:", sake.utils.bootstrap_mae(f_vl_hat, f_vl), "\n")
 
 
 if __name__ == "__main__":
     import sys
-
     run(sys.argv[1])
