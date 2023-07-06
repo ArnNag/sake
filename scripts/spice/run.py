@@ -151,7 +151,7 @@ def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
         state = epoch(state, i_tr, x_tr, f_tr, y_tr)
         print("after epoch")
         assert state.opt_state.notfinite_count <= 10
-        save_checkpoint(f"_{prefix}batch_{batch_size}_eloss_{e_loss_factor:e}_subset_{subset}", target=state, keep_every_n_steps=10, step=idx_batch)
+        save_checkpoint(f"_{prefix}batch_{batch_size}_eloss_{e_loss_factor:.0e}_subset_{subset}", target=state, keep_every_n_steps=10, step=idx_batch)
 
 '''
 Initialize for every epoch with a unique seed.
