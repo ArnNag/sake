@@ -19,7 +19,7 @@ def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
     f_tr = ds_tr["forces"]
     y_tr = ds_tr["formation_energy"]
 
-    if subset is not None: 
+    if subset is not None and subset >= 0: 
         select = (ds_tr["subsets"] == subset)
         i_tr, x_tr, f_tr, y_tr = i_tr[select], x_tr[select], f_tr[select], y_tr[select] 
     
