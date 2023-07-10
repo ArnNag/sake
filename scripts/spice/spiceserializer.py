@@ -5,14 +5,15 @@ import time
 import json
 import os
 import sys
+from utils import batch_radius_graph
 
 class SPICESerializer:
 
-    def __init__(self, data_path, out_prefix, train_ratio, test_ratio, seed=2666, max_atom_num=96):
+    def __init__(self, data_path, out_prefix, train_ratio, test_ratio, seed=2666, max_atoms=96, max_edges=1000, dist_cutoff=5):
         self.data = h5py.File(data_path, 'r')
         self.names = list(self.data.keys())
         key = jax.random.PRNGKey(seed)
-        self.max_atom_num = max_atom_num
+        self.max_atoms = max_atoms
         self.SUBSET_MAP = {"SPICE Dipeptides Single Points Dataset v1.2" : 0, "SPICE Solvated Amino Acids Single Points Dataset v1.1" : 1, "SPICE DES370K Single Points Dataset v1.0" : 2, "SPICE DES370K Single Points Dataset Supplement v1.0" : 2, "SPICE DES Monomers Single Points Dataset v1.1" : 3, "SPICE PubChem Set 1 Single Points Dataset v1.2": 4, "SPICE PubChem Set 2 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 3 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 4 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 5 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 6 Single Points Dataset v1.2" : 4, "SPICE Ion Pairs Single Points Dataset v1.1" : 5} 
         self.test_names, self.train_names, self.val_names = self._split(key, train_ratio, test_ratio)
         self._make_npz(self.train_names, out_prefix + "spice_train")
@@ -37,19 +38,21 @@ class SPICESerializer:
         all_grads = []
         all_subsets = []
         all_names = []
+        all_edges = []
         for name in names:
             atom_nums = np.array(self.data[name]['atomic_numbers'], np.uint8)
-            if len(atom_nums) > self.max_atom_num:
+            if len(atom_nums) > self.max_atoms:
                 print("Skipping: ", name)
                 continue
             pos_arr = self.data[name]['conformations']
             grads_arr = self.data[name]['dft_total_gradient']
             # total_energy_arr = self.data[name]['dft_total_energy']
             form_energy_arr = self.data[name]['formation_energy']
-            pad_num = self.max_atom_num - len(atom_nums)
+            pad_num = self.max_atoms - len(atom_nums)
             padded_atom_nums = np.pad(atom_nums, (0, pad_num))
             padded_pos = np.pad(pos_arr, ((0, 0), (0, pad_num), (0, 0)))
             padded_grads = np.pad(grads_arr, ((0, 0), (0, pad_num), (0, 0)))
+            edges = batch_radius_graph(pos_arr, 
             all_atom_nums.append([padded_atom_nums for conf in range(len(pos_arr))])
             all_subsets.append([self.SUBSET_MAP[self.data[name]['subset'][0]] for conf in range(len(pos_arr))])
             all_names.append([name for conf in range(len(pos_arr))])
@@ -57,7 +60,8 @@ class SPICESerializer:
             all_form_energies.append(form_energy_arr)
             all_grads.append(padded_grads)
             all_pos.append(padded_pos)
-        np.savez(out_path, atomic_numbers=np.concatenate(all_atom_nums), formation_energy=np.concatenate(all_form_energies), forces=-np.concatenate(all_grads), pos=np.concatenate(all_pos), names=np.concatenate(all_names), subsets=np.concatenate(all_subsets))
+            all_edges.append(edges)
+        np.savez(out_path, atomic_numbers=np.concatenate(all_atom_nums), formation_energy=np.concatenate(all_form_energies), forces=-np.concatenate(all_grads), pos=np.concatenate(all_pos), names=np.concatenate(all_names), subsets=np.concatenate(all_subsets), edges=np.concatenate(all_edges))
 
 if __name__ == "__main__": 
-	spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', sys.argv[1], train_ratio=float(sys.argv[2]), test_ratio=float(sys.argv[3]), max_atom_num=int(sys.argv[4]))
+	spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', sys.argv[1], train_ratio=float(sys.argv[2]), test_ratio=float(sys.argv[3]), max_atoms=int(sys.argv[4]))
