@@ -6,14 +6,16 @@ import numpy as onp
 import sake
 from functools import partial
 import tqdm
+import os
 
 
-def run(prefix):
-    BATCH_SIZE = 512
+def run(path, train_subset=None, val_subset=None):
+    BATCH_SIZE = 32
+    prefix = path[1:path.rfind("batch")]
+    print("prefix: ", prefix)
     ds_tr = onp.load(prefix + "spice_train.npz")
-    ds_vl = onp.load(prefix + "spice_valid.npz")
+    ds_vl = onp.load(prefix + "spice_val.npz")
 
-    # i_tr = ds_tr["atomic_numbers"]
     i_vl = ds_vl["atomic_numbers"]
 
     # Index into ELEMENT_MAP is atomic number, value is type number. -99 indicates element not in dataset.
@@ -23,17 +25,27 @@ def run(prefix):
          -99, -99, -99, -99, 15])
     NUM_ELEMENTS = 16
 
-    # i_tr = ELEMENT_MAP[i_tr]
     i_vl = ELEMENT_MAP[i_vl]
-    # x_tr = ds_tr["pos"]
     x_vl = ds_vl["pos"]
-    # f_tr = ds_tr["forces"]
     f_vl = ds_vl["forces"]
-    y_tr = ds_tr["total_energy"]
-    y_vl = ds_vl["total_energy"]
+    y_tr = ds_tr["formation_energy"]
+    y_vl = ds_vl["formation_energy"]
+    print("loaded")
+
+    
+    if train_subset is not None or train_subset >= 0:
+        select_tr = jnp.equal(ds_tr["subsets"], train_subset)
+        y_tr = y_tr[select_tr] 
+
+    if val_subset is not None or val_subset >= 0:
+        select_vl = jnp.equal(ds_vl["subsets"], val_subset)
+        i_vl, x_vl, f_vl, y_vl = i_vl[select_vl], x_vl[select_vl], f_vl[select_vl], y_vl[select_vl] 
+       
     y_tr = onp.expand_dims(y_tr, -1)
     y_vl = onp.expand_dims(y_vl, -1)
-    print("loaded")
+
+    print("i_vl shape: ", i_vl.shape)
+    print("y_vl shape: ", y_vl.shape)
 
     def make_edge_mask(m):
         return jnp.expand_dims(m, -1) * jnp.expand_dims(m, -2)
@@ -110,18 +122,23 @@ def run(prefix):
         return f_hat, y_hat
 
     from flax.training.checkpoints import restore_checkpoint
-    for epoch in range(7):
-        print("epoch", epoch, ": ")
-        state = restore_checkpoint("_" + prefix, None, step=epoch)
-        params = state['params']
-        f_vl_hat, y_vl_hat = predict(params, i_vl, x_vl) 
-        jnp.save(prefix + "_" + str(epoch) + "_energies", y_vl_hat)
-        jnp.save(prefix + "_" + str(epoch) + "_forces", f_vl_hat)
-        print("validation energy loss:", sake.utils.bootstrap_mae(y_vl_hat, y_vl))
-        print("validation force loss:", sake.utils.bootstrap_mae(f_vl_hat, f_vl))
+    save_path = f"val{path}"
+    os.mkdir(save_path)
+    print("save_path: ", save_path)
+    with open(os.path.join(save_path, "losses"), "x") as losses:
+        for checkpoint in sorted(os.listdir(path)):
+            losses.write(checkpoint + ": ")
+            checkpoint_path = os.path.join(path, checkpoint, "checkpoint")
+            print("checkpoint_path: ", checkpoint_path)
+            state = restore_checkpoint(checkpoint_path, None)
+            params = state['params']
+            f_vl_hat, y_vl_hat = predict(params, i_vl, x_vl) 
+            jnp.save(os.path.join(save_path, f"{checkpoint}_energies"), y_vl_hat)
+            jnp.save(os.path.join(save_path, f"{checkpoint}_forces"), f_vl_hat)
+            losses.write(f"validation energy loss: {sake.utils.bootstrap_mae(y_vl_hat, y_vl)} ")
+            losses.write(f"validation force loss: {sake.utils.bootstrap_mae(f_vl_hat, f_vl)} \n")
 
 
 if __name__ == "__main__":
     import sys
-
-    run(sys.argv[1])
+    run(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))
