@@ -3,6 +3,7 @@ import jax.numpy as jnp
 from flax import linen as nn
 from typing import Callable, Union, List
 from .layers import (
+    SAKELayer,
     DenseSAKELayer,
     SparseSAKELayer,
     EquivariantGraphConvolutionalLayer,
