@@ -9,8 +9,8 @@ import tqdm
 import os
 
 
-def run(path, train_subset=None, val_subset=None):
-    BATCH_SIZE = 32
+def run(path, train_subset=-1, val_subset=-1):
+    BATCH_SIZE = 512
     prefix = path[1:path.rfind("batch")]
     print("prefix: ", prefix)
     ds_tr = onp.load(prefix + "spice_train.npz")
@@ -33,11 +33,11 @@ def run(path, train_subset=None, val_subset=None):
     print("loaded")
 
     
-    if train_subset is not None or train_subset >= 0:
+    if train_subset >= 0:
         select_tr = jnp.equal(ds_tr["subsets"], train_subset)
         y_tr = y_tr[select_tr] 
 
-    if val_subset is not None or val_subset >= 0:
+    if val_subset >= 0:
         select_vl = jnp.equal(ds_vl["subsets"], val_subset)
         i_vl, x_vl, f_vl, y_vl = i_vl[select_vl], x_vl[select_vl], f_vl[select_vl], y_vl[select_vl] 
        

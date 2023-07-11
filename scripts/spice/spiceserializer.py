@@ -5,15 +5,18 @@ import time
 import json
 import os
 import sys
+import tqdm
 from utils import batch_radius_graph
 
 class SPICESerializer:
 
-    def __init__(self, data_path, out_prefix, train_ratio, test_ratio, seed=2666, max_atoms=96, max_edges=1000, dist_cutoff=5):
+    def __init__(self, data_path, out_prefix, train_ratio, test_ratio, seed=2666, max_atoms=96, dist_cutoff=10, max_edges=3600):
         self.data = h5py.File(data_path, 'r')
         self.names = list(self.data.keys())
         key = jax.random.PRNGKey(seed)
         self.max_atoms = max_atoms
+        self.dist_cutoff = dist_cutoff
+        self.max_edges = max_edges
         self.SUBSET_MAP = {"SPICE Dipeptides Single Points Dataset v1.2" : 0, "SPICE Solvated Amino Acids Single Points Dataset v1.1" : 1, "SPICE DES370K Single Points Dataset v1.0" : 2, "SPICE DES370K Single Points Dataset Supplement v1.0" : 2, "SPICE DES Monomers Single Points Dataset v1.1" : 3, "SPICE PubChem Set 1 Single Points Dataset v1.2": 4, "SPICE PubChem Set 2 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 3 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 4 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 5 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 6 Single Points Dataset v1.2" : 4, "SPICE Ion Pairs Single Points Dataset v1.1" : 5} 
         self.test_names, self.train_names, self.val_names = self._split(key, train_ratio, test_ratio)
         self._make_npz(self.train_names, out_prefix + "spice_train")
@@ -39,7 +42,7 @@ class SPICESerializer:
         all_subsets = []
         all_names = []
         all_edges = []
-        for name in names:
+        for name in tqdm.tqdm(names):
             atom_nums = np.array(self.data[name]['atomic_numbers'], np.uint8)
             if len(atom_nums) > self.max_atoms:
                 print("Skipping: ", name)
@@ -52,7 +55,7 @@ class SPICESerializer:
             padded_atom_nums = np.pad(atom_nums, (0, pad_num))
             padded_pos = np.pad(pos_arr, ((0, 0), (0, pad_num), (0, 0)))
             padded_grads = np.pad(grads_arr, ((0, 0), (0, pad_num), (0, 0)))
-            edges = batch_radius_graph(pos_arr, 
+            edges = batch_radius_graph(pos_arr, self.dist_cutoff, self.max_edges)
             all_atom_nums.append([padded_atom_nums for conf in range(len(pos_arr))])
             all_subsets.append([self.SUBSET_MAP[self.data[name]['subset'][0]] for conf in range(len(pos_arr))])
             all_names.append([name for conf in range(len(pos_arr))])
