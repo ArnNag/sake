@@ -42,7 +42,7 @@ class SAKEModel(nn.Module):
             setattr(
                 self,
                 "d%s" % idx,
-                layer_type(
+                self.layer_type(
                     hidden_features=self.hidden_features,
                     out_features=self.hidden_features,
                     update=update[idx],
