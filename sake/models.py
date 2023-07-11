@@ -4,11 +4,12 @@ from flax import linen as nn
 from typing import Callable, Union, List
 from .layers import (
     DenseSAKELayer,
+    SparseSAKELayer,
     EquivariantGraphConvolutionalLayer,
     EquivariantGraphConvolutionalLayerWithSmearing,
 )
 
-class DenseSAKEModel(nn.Module):
+class SAKEModel(nn.Module):
     hidden_features: int
     out_features: int
     depth: int = 4
@@ -19,6 +20,7 @@ class DenseSAKEModel(nn.Module):
     use_spatial_attention: bool = True
     n_heads: int=4
     cutoff: Callable=None
+    layer_type: type[SAKELayer]=SAKELayer
 
     def setup(self):
         self.embedding_in = nn.Dense(self.hidden_features)
@@ -39,7 +41,7 @@ class DenseSAKEModel(nn.Module):
             setattr(
                 self,
                 "d%s" % idx,
-                DenseSAKELayer(
+                layer_type(
                     hidden_features=self.hidden_features,
                     out_features=self.hidden_features,
                     update=update[idx],
@@ -60,6 +62,11 @@ class DenseSAKEModel(nn.Module):
         h = self.embedding_out(h)
         return h, x, v
 
+class DenseSAKEModel(SAKEModel):
+    layer_type: type[SAKELayer]=DenseSAKELayer
+
+class SparseSAKEModel(SAKEModel):
+    layer_type: type[SAKELayer]=SparseSAKELayer
 
 class EquivariantGraphNeuralNetwork(nn.Module):
     hidden_features: int

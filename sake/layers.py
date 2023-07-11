@@ -310,11 +310,13 @@ class SparseSAKELayer(SAKELayer):
         # h_combinations = self.norm(h_combinations)
         return h_combinations, combinations
 
-    def aggregate(self, h_e_mtx, mask=None):
+    def aggregate(self, h_e_mtx, idxs=None):
         # h_e_mtx = self.mask_self(h_e_mtx)
-        if mask is not None:
-            h_e_mtx = h_e_mtx * jnp.expand_dims(mask, -1)
-        h_e = h_e_mtx.sum(axis=-2)
+        if idxs is not None:
+            _idxs = idxs[:,0], idxs[:, 1] 
+            h_e_mtx_masked = np.zeros_like(h_e_mtx)
+            h_e_mtx_masked[_idxs] = h_e_mtx[_idxs]
+        h_e = h_e_mtx_masked.sum(axis=-2)
         return h_e
 
     def node_model(self, h, h_e, h_combinations):
@@ -385,7 +387,7 @@ class SparseSAKELayer(SAKELayer):
             h,
             x,
             v=None,
-            mask=None,
+            idxs=None,
             he=None,
         ):
 
@@ -401,7 +403,7 @@ class SparseSAKELayer(SAKELayer):
         h_e_att = jnp.expand_dims(h_e_mtx, -1) * jnp.expand_dims(combined_attention, -2)
         h_e_att = jnp.reshape(h_e_att, h_e_att.shape[:-2] + (-1, ))
         jax.debug.print("h_e_att shape: {}", h_e_att.shape)
-        h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, mask=mask)
+        h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, idxs=idxs)
 
         if not self.use_spatial_attention:
             h_combinations = jnp.zeros_like(h_combinations)

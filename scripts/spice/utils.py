@@ -1,5 +1,14 @@
 import numpy as np
 
+# Index into ELEMENT_MAP is atomic number, value is type number. -99 indicates element not in dataset.
+ELEMENT_MAP = onp.array([ 0,  1, -99,  2, -99, -99,  3,  4,  5,  6, -99,  7,  8, -99, -99,  9, 10, 11, -99, 12, 13, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, 14, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, 15]) 
+
+NUM_ELEMENTS = 16
+
+def select(subset_labels, subset, *fields):
+    selection = (subset_labels == subset)
+    return (field[selection] for field in *fields)
+
 """
 Geometry (n_atoms, 3) -> pairwise distances (n_atoms, n_atoms)
 Batched geometry (batch_size, n_atoms, 3) -> pairwise distances (batch_size, n_atoms, n_atoms)
@@ -13,6 +22,7 @@ def distance_matrix(pos):
 Geometry (n_atoms, 3) -> indices of edges within L (n_edges, 2)
 """
 def radius_graph(pos, L):
+    print(pos)
     assert(len(pos.shape) == 2)
     return np.argwhere((distance_matrix(pos) < L) & ~np.identity(pos.shape[-2], dtype=bool))
 
