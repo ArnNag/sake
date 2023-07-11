@@ -385,7 +385,7 @@ class SparseSAKELayer(SAKELayer):
             h,
             x,
             v=None,
-            idxs=None,
+            edges=None,
             he=None,
         ):
 
@@ -405,7 +405,7 @@ class SparseSAKELayer(SAKELayer):
         h_e_att = jnp.expand_dims(h_e_mtx, -1) * jnp.expand_dims(combined_attention, -2)
         h_e_att = jnp.reshape(h_e_att, h_e_att.shape[:-2] + (-1, ))
         jax.debug.print("h_e_att shape: {}", h_e_att.shape)
-        h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, idxs=idxs)
+        h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, idxs=edges)
 
         if not self.use_spatial_attention:
             h_combinations = jnp.zeros_like(h_combinations)

@@ -49,7 +49,7 @@ def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
             )
 
         def __call__(self, i, x, edges):
-            y = self.model(i, x, idxs=edges)[0]
+            y = self.model(i, x, edges=edges)[0]
             y = y.sum(-2)
             y = self.mlp(y)
             return y
