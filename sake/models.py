@@ -72,7 +72,7 @@ class SparseSAKEModel(SAKEModel):
     def __call__(self, h, x, v=None, edges=None, he=None):
         h = self.embedding_in(h)
         for layer in self.layers:
-            h, x, v = layer(h, x, v, idxs=edges, he=he)
+            h, x, v = layer(h, x, v, edges=edges, he=he)
         h = self.embedding_out(h)
         return h, x, v
 

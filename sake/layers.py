@@ -396,9 +396,9 @@ class SparseSAKELayer(SAKELayer):
         if he is not None:
             h_cat_ht = jnp.concatenate([h_cat_ht, he], -1)
 
-        if idxs is not None:
-            mask = np.zeros(x.shape[-2], x.shape[-2])
-            mask[idxs[:,0], idxs[:,1]] = 1
+        if edges is not None:
+            mask = jnp.zeros((x.shape[-2], x.shape[-2]))
+            mask.at[edges[:,0], edges[:,1]].set(1)
 
         h_e_mtx = self.edge_model(h_cat_ht, x_minus_xt_norm)
         euclidean_attention, semantic_attention, combined_attention = self.combined_attention(x_minus_xt_norm, h_e_mtx, mask=mask)
