@@ -301,8 +301,8 @@ class SparseSAKELayer(SAKELayer):
 
         # (batch_size, n, n, coefficients, 3)
         combinations = jnp.expand_dims(x_minus_xt, -2) * jnp.expand_dims(coefficients, -1)
-        jax.debug.print("combinations shape: {}", combinations)
-        jax.debug.print("combinations.swapaxes(-3, -5) shape: {}", combinations.swapaxes(-3, -5))
+        jax.debug.print("combinations shape: {}", combinations.shape)
+        jax.debug.print("combinations.swapaxes(-3, -5) shape: {}", combinations.swapaxes(-3, -5).shape)
         jax.debug.print("idxs[...,-1] shape: {}", idxs[...,-1].shape)
 
         # (batch_size, n, n, coefficients, 3)
