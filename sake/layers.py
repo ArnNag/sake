@@ -293,6 +293,7 @@ class SparseSAKELayer(SAKELayer):
         jax.debug.print("x_minus_xt_norm shape: {}", x_minus_xt_norm.shape)
         jax.debug.print("idxs shape: {}", idxs.shape)
         coefficients = self.x_mixing(h_e_mtx)
+        jax.debug.print("coefficients shape: {}", coefficients.shape)
 
         # (batch_size, n, n, 3)
         # x_minus_xt = x_minus_xt * euclidean_attention.mean(dim=-1, keepdim=True) / (x_minus_xt_norm + 1e-5)
@@ -310,6 +311,7 @@ class SparseSAKELayer(SAKELayer):
         combinations_sum = segment_mean(
             combinations.swapaxes(-3, -5),
             idxs[..., -1],
+            num_segments = x_minus_xt.shape[-2]
         ).swapaxes(-2, -4)
 
         combinations_norm = (combinations_sum ** 2).sum(-1)# .pow(0.5)
