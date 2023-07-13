@@ -45,8 +45,7 @@ def batch_message_passing(batch_idxs, batch_data):
     batch_edge_pos = jnp.logical_not(jnp.all(batch_idxs == -1, axis=-1)) 
     batch_num_nodes = jnp.sum(batch_node_pos, axis=-1)
     batch_cumsum = jnp.cumsum(batch_num_nodes, axis=-1)
-    batch_offset = jnp.zeros_like(batch_cumsum)
-    batch_offset = batch_offset.at[1:].set(batch_cumsum[:-1])
+    batch_offset = jnp.zeros_like(batch_cumsum).at[1:].set(batch_cumsum[:-1])
     flattened_idxs = (batch_idxs + jnp.expand_dims(jnp.expand_dims(batch_offset, -1) * batch_edge_pos, -1)).reshape(batch_idxs.shape[0] * batch_idxs.shape[1], 2)
     flattened_idxs = flattened_idxs[batch_edge_pos.flatten()]  # non-static boolean indexing. technically not necessary since the partition index is -1, but deleting line will result in a lot of unnecessary indexing when computing src. pad to constant length?
     print("batch_idxs:", batch_idxs)
