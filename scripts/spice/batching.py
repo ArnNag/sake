@@ -1,14 +1,14 @@
 import jax
 import jax.numpy as jnp
 
-# Two graphs
 
-def message_passing(edges, data):
+def message_passing(edges, data, num_segments):
     src = edges[:,0]
     dst = edges[:,1]
-    return jax.ops.segment_sum(data[src], dst)
+    return jax.ops.segment_sum(data[src], dst, num_segments=num_segments)
 
 
+# Two graphs
 def two_graphs_test():
     batch_nodes = 100
     x_nodes = 5
@@ -55,7 +55,7 @@ def batch_message_passing(batch_idxs, batch_data):
     flattened_data = batch_data.reshape(batch_data.shape[0] * batch_data.shape[1], batch_data.shape[2])[batch_node_pos.flatten()]
     print("batch_data:", batch_data)
     print("flattened data", flattened_data)
-    return message_passing(flattened_idxs, flattened_data)
+    return message_passing(flattened_idxs, flattened_data, batch_cumsum[-1])
 
 def array_graphs_test():
     hidden = 3
@@ -67,6 +67,7 @@ def array_graphs_test():
     nodes_per_graph = jax.random.randint(key, shape=(batch_size,), minval=1, maxval=max_nodes)
     edges_per_graph = jax.random.randint(key, shape=(batch_size,), minval=1, maxval=max_edges)
     print("nodes_per_graph:", nodes_per_graph)
+    print("edges_per_graph:", edges_per_graph)
     batch_data = []
     batch_idxs = []
     for i, (num_nodes, num_edges) in enumerate(zip(nodes_per_graph, edges_per_graph)):
@@ -82,7 +83,7 @@ def array_graphs_test():
             
 
     batched_result = batch_message_passing(batch_idxs, batch_data)
-    unbatched_result = jnp.concatenate([message_passing(idxs, data) for idxs, data in zip(batch_idxs, batch_data)], axis=0)
+    unbatched_result = jnp.concatenate([message_passing(idxs, data, num_nodes) for idxs, data, num_nodes in zip(batch_idxs, batch_data, nodes_per_graph)], axis=0)
     print("batched_result:", batched_result)
     print("unbatched_result:", unbatched_result)
     passed = jnp.array_equal(batched_result, unbatched_result)
