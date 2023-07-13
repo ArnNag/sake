@@ -50,8 +50,7 @@ def batch_message_passing(batch_idxs, batch_data):
     # print("batch_offset:", batch_offset)
     # print(jnp.expand_dims(batch_offset, -1).shape)
     # print((batch_idxs[:,:,1] != -1).shape)
-    flattened_idxs = (batch_idxs + jnp.expand_dims(jnp.expand_dims(batch_offset, -1) * batch_edge_pos, -1)).reshape(batch_idxs.shape[0] * batch_idxs.shape[1], 2)
-    flattened_idxs = flattened_idxs[batch_edge_pos.flatten()]
+    flattened_idxs = (batch_idxs + jnp.expand_dims(jnp.expand_dims(batch_offset, -1) * batch_edge_pos, -1)).reshape(batch_idxs.shape[0] * batch_idxs.shape[1], 2)[batch_edge_pos.flatten()]
     print("batch_idxs:", batch_idxs)
     print("flattened_idxs:", flattened_idxs)
     flattened_data = batch_data.reshape(batch_data.shape[0] * batch_data.shape[1], batch_data.shape[2])[batch_node_pos.flatten()]
