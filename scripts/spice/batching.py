@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 
 
-# Shape of output not static as it depends on num_segments
+# Shape of output not static as it depends on num_segments. Set constant num_segments?
 def message_passing(edges, data, num_segments):
     src = edges[:,0]
     dst = edges[:,1]
@@ -47,7 +47,7 @@ def batch_message_passing(batch_idxs, batch_data):
     batch_cumsum = jnp.cumsum(batch_num_nodes, axis=-1)
     batch_offset = jnp.zeros_like(batch_cumsum).at[1:].set(batch_cumsum[:-1])
     flattened_idxs = (batch_idxs + jnp.expand_dims(jnp.expand_dims(batch_offset, -1) * batch_edge_pos, -1)).reshape(batch_idxs.shape[0] * batch_idxs.shape[1], 2)
-    flattened_idxs = flattened_idxs[batch_edge_pos.flatten()]  # non-static boolean indexing. technically not necessary since the partition index is -1, but deleting line will result in a lot of unnecessary indexing when computing src. pad to constant length?
+    flattened_idxs = flattened_idxs[batch_edge_pos.flatten()]  # non-static boolean indexing. technically not necessary since the segment index is -1, but deleting line will result in a lot of unnecessary indexing when computing src. pad to constant length?
     print("batch_idxs:", batch_idxs)
     print("flattened_idxs:", flattened_idxs)
     flattened_data = batch_data.reshape(batch_data.shape[0] * batch_data.shape[1], batch_data.shape[2])[batch_node_pos.flatten()] # non-static boolean indexing. pad to constant length?
