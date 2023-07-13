@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 
 
+# Shape of output not static as it depends on num_segments
 def message_passing(edges, data, num_segments):
     src = edges[:,0]
     dst = edges[:,1]
@@ -40,20 +41,17 @@ def two_graphs_test():
 def batch_message_passing(batch_idxs, batch_data):
     offset = 0
     results = []
-    batch_node_pos = jnp.logical_not(jnp.all(batch_data == 0, axis=-1)) # edge case: what if all hidden values happen to be 0 for a real node
+    batch_node_pos = jnp.logical_not(jnp.all(batch_data == 0, axis=-1)) # edge case: what if all hidden values happen to be 0 for a real node. serialize number of nodes/edges per example?
     batch_edge_pos = jnp.logical_not(jnp.all(batch_idxs == -1, axis=-1)) 
     batch_num_nodes = jnp.sum(batch_node_pos, axis=-1)
-    # print("batch_num_nodes:", batch_num_nodes)
     batch_cumsum = jnp.cumsum(batch_num_nodes, axis=-1)
     batch_offset = jnp.zeros_like(batch_cumsum)
     batch_offset = batch_offset.at[1:].set(batch_cumsum[:-1])
-    # print("batch_offset:", batch_offset)
-    # print(jnp.expand_dims(batch_offset, -1).shape)
-    # print((batch_idxs[:,:,1] != -1).shape)
-    flattened_idxs = (batch_idxs + jnp.expand_dims(jnp.expand_dims(batch_offset, -1) * batch_edge_pos, -1)).reshape(batch_idxs.shape[0] * batch_idxs.shape[1], 2)[batch_edge_pos.flatten()]
+    flattened_idxs = (batch_idxs + jnp.expand_dims(jnp.expand_dims(batch_offset, -1) * batch_edge_pos, -1)).reshape(batch_idxs.shape[0] * batch_idxs.shape[1], 2)
+    flattened_idxs = flattened_idxs[batch_edge_pos.flatten()]  # non-static boolean indexing. technically not necessary since the partition index is -1, but deleting line will result in a lot of unnecessary indexing when computing src. pad to constant length?
     print("batch_idxs:", batch_idxs)
     print("flattened_idxs:", flattened_idxs)
-    flattened_data = batch_data.reshape(batch_data.shape[0] * batch_data.shape[1], batch_data.shape[2])[batch_node_pos.flatten()]
+    flattened_data = batch_data.reshape(batch_data.shape[0] * batch_data.shape[1], batch_data.shape[2])[batch_node_pos.flatten()] # non-static boolean indexing. pad to constant length?
     print("batch_data:", batch_data)
     print("flattened data", flattened_data)
     return message_passing(flattened_idxs, flattened_data, batch_cumsum[-1])
