@@ -41,6 +41,7 @@ def batch_message_passing(batch_idxs, batch_data):
     offset = 0
     results = []
     batch_node_pos = jnp.logical_not(jnp.all(batch_data == 0, axis=-1)) # edge case: what if all hidden values happen to be 0 for a real node
+    batch_edge_pos = jnp.logical_not(jnp.all(batch_idxs == -1, axis=-1)) 
     batch_num_nodes = jnp.sum(batch_node_pos, axis=-1)
     # print("batch_num_nodes:", batch_num_nodes)
     batch_cumsum = jnp.cumsum(batch_num_nodes, axis=-1)
@@ -49,8 +50,8 @@ def batch_message_passing(batch_idxs, batch_data):
     # print("batch_offset:", batch_offset)
     # print(jnp.expand_dims(batch_offset, -1).shape)
     # print((batch_idxs[:,:,1] != -1).shape)
-    flattened_idxs = (batch_idxs + jnp.expand_dims(jnp.expand_dims(batch_offset, -1) * (batch_idxs[:,:,1] != -1), -1)).reshape(batch_idxs.shape[0] * batch_idxs.shape[1], 2)
-    flattened_idxs = flattened_idxs[jnp.logical_not(jnp.all(flattened_idxs == -1, axis=-1))]
+    flattened_idxs = (batch_idxs + jnp.expand_dims(jnp.expand_dims(batch_offset, -1) * batch_edge_pos, -1)).reshape(batch_idxs.shape[0] * batch_idxs.shape[1], 2)
+    flattened_idxs = flattened_idxs[batch_edge_pos.flatten()]
     print("batch_idxs:", batch_idxs)
     print("flattened_idxs:", flattened_idxs)
     flattened_data = batch_data.reshape(batch_data.shape[0] * batch_data.shape[1], batch_data.shape[2])[batch_node_pos.flatten()]
