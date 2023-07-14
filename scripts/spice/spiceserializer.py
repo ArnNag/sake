@@ -42,6 +42,8 @@ class SPICESerializer:
         all_subsets = []
         all_names = []
         all_edges = []
+        all_num_nodes = []
+        all_num_edges = []
         for name in tqdm.tqdm(names):
             atom_nums = np.array(self.data[name]['atomic_numbers'], np.uint8)
             if len(atom_nums) > self.max_atoms:
@@ -51,11 +53,12 @@ class SPICESerializer:
             grads_arr = self.data[name]['dft_total_gradient']
             # total_energy_arr = self.data[name]['dft_total_energy']
             form_energy_arr = self.data[name]['formation_energy']
-            pad_num = self.max_atoms - len(atom_nums)
+            num_nodes = len(atom_nums)
+            pad_num = self.max_atoms - num_nodes
             padded_atom_nums = np.pad(atom_nums, (0, pad_num))
             padded_pos = np.pad(pos_arr, ((0, 0), (0, pad_num), (0, 0)))
             padded_grads = np.pad(grads_arr, ((0, 0), (0, pad_num), (0, 0)))
-            edges = batch_radius_graph(pos_arr, self.dist_cutoff, self.max_edges)
+            edges, num_edges = batch_radius_graph(pos_arr, self.dist_cutoff, self.max_edges)
             all_atom_nums.append([padded_atom_nums for conf in range(len(pos_arr))])
             all_subsets.append([self.SUBSET_MAP[self.data[name]['subset'][0]] for conf in range(len(pos_arr))])
             all_names.append([name for conf in range(len(pos_arr))])
@@ -64,7 +67,9 @@ class SPICESerializer:
             all_grads.append(padded_grads)
             all_pos.append(padded_pos)
             all_edges.append(edges)
-        np.savez(out_path, atomic_numbers=np.concatenate(all_atom_nums), formation_energy=np.concatenate(all_form_energies), forces=-np.concatenate(all_grads), pos=np.concatenate(all_pos), names=np.concatenate(all_names), subsets=np.concatenate(all_subsets), edges=np.concatenate(all_edges))
+            all_num_nodes.append(num_nodes)
+            all_num_edges.append(num_edges)
+        np.savez(out_path, atomic_numbers=np.concatenate(all_atom_nums), formation_energy=np.concatenate(all_form_energies), forces=-np.concatenate(all_grads), pos=np.concatenate(all_pos), names=np.concatenate(all_names), subsets=np.concatenate(all_subsets), edges=np.concatenate(all_edges), num_nodes=np.concatenate(all_num_nodes), num_edges=np.concatenate(all_num_edges))
 
 if __name__ == "__main__": 
 	spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', sys.argv[1], train_ratio=float(sys.argv[2]), test_ratio=float(sys.argv[3]), max_atoms=int(sys.argv[4]))

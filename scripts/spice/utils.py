@@ -27,16 +27,19 @@ def radius_graph(pos, L):
     return onp.argwhere((distance_matrix(pos) < L) & ~onp.identity(pos.shape[-2], dtype=bool))
 
 """
-Batched geometry (batch_size, n_atoms, 3) -> indices of edges within L (batch_size, n_edges, 2)
+Batched geometry (batch_size, n_atoms, 3) -> indices of edges within L (batch_size, n_edges, 2), number of edges within L (batch_size, )
 """
 def batch_radius_graph(batch_pos, L, max_edges):
     assert(len(batch_pos.shape) == 3)
     all_edges = []    
+    all_num_edges = []
     for i, pos in enumerate(batch_pos):
         edges = radius_graph(pos, L)
-        pad_len = max_edges - len(edges)
+        num_edges = len(edges)
+        pad_len = max_edges - num_edges
         if pad_len < 0:
             print(f"Skipping {i}")
             continue
         all_edges.append(onp.pad(edges, ((0, pad_len), (0, 0)), mode="constant", constant_values=-1))
-    return onp.array(all_edges, dtype=onp.int8)
+        all_num_edges.append(num_edges)
+    return onp.array(all_edges, dtype=onp.int8), onp.array(all_num_edges, dtype=onp.int16)
