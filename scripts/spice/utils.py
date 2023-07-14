@@ -22,7 +22,6 @@ def distance_matrix(pos):
 Geometry (n_atoms, 3) -> indices of edges within L (n_edges, 2)
 """
 def radius_graph(pos, L):
-    print(pos)
     assert(len(pos.shape) == 2)
     return onp.argwhere((distance_matrix(pos) < L) & ~onp.identity(pos.shape[-2], dtype=bool))
 

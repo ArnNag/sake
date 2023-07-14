@@ -10,7 +10,7 @@ from utils import batch_radius_graph
 
 class SPICESerializer:
 
-    def __init__(self, data_path, out_prefix, train_ratio, test_ratio, seed=2666, max_atoms=96, dist_cutoff=10, max_edges=3600):
+    def __init__(self, data_path, out_prefix, train_ratio, test_ratio, seed=2666, max_atoms=96, dist_cutoff=10, max_edges=3312):
         self.data = h5py.File(data_path, 'r')
         self.names = list(self.data.keys())
         key = jax.random.PRNGKey(seed)
@@ -67,8 +67,10 @@ class SPICESerializer:
             all_grads.append(padded_grads)
             all_pos.append(padded_pos)
             all_edges.append(edges)
-            all_num_nodes.append(num_nodes)
+            all_num_nodes.append([num_nodes for conf in range(len(pos_arr))])
             all_num_edges.append(num_edges)
+        print(all_num_nodes)
+        print(all_num_edges)
         np.savez(out_path, atomic_numbers=np.concatenate(all_atom_nums), formation_energy=np.concatenate(all_form_energies), forces=-np.concatenate(all_grads), pos=np.concatenate(all_pos), names=np.concatenate(all_names), subsets=np.concatenate(all_subsets), edges=np.concatenate(all_edges), num_nodes=np.concatenate(all_num_nodes), num_edges=np.concatenate(all_num_edges))
 
 if __name__ == "__main__": 
