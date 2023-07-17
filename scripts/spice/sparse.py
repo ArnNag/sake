@@ -92,7 +92,7 @@ def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
             # i, x, m, y = next(iterator)
             # i, x, m, y = jnp.squeeze(i), jnp.squeeze(x), jnp.squeeze(m), jnp.squeeze(y)
             #
-            i, x, edges, f, y = loader.get_batch(idx)  
+            i, x, edges, f, y, graph_segments = loader.get_batch(idx)  
             state = step_with_loss(state, i, x, edges, f, y)
             return state
 
@@ -109,7 +109,7 @@ def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
         return state
 
     init_loader = SPICEBatchLoader(i_tr, x_tr, edges_tr, f_tr, y_tr, 2666, batch_size, NUM_ELEMENTS)
-    i0, x0, m0, _, __ = init_loader.get_batch(0)
+    i0, x0, m0 = init_loader.get_batch(0)[:2]
 
     key = jax.random.PRNGKey(2666)
     params = model.init(key, i0, x0, m0)
@@ -150,27 +150,78 @@ Initialize for every epoch with a unique seed.
 '''
 class SPICEBatchLoader:
 
-    def __init__(self, i_tr, x_tr, edges_tr, f_tr, y_tr, seed, batch_size, num_elements):
-        self.batch_size = batch_size
+    def __init__(self, i_tr, x_tr, edges_tr, f_tr, y_tr, num_nodes_tr, num_edges_tr, seed, max_edges, max_nodes, max_graphs, num_elements):
+        self.max_graphs = max_graphs
         self.num_elements = num_elements
         self.i_tr = i_tr
         self.x_tr = x_tr
         self.edges_tr = edges_tr
         self.f_tr = f_tr
         self.y_tr = y_tr
+        self.num_nodes_tr = num_nodes_tr
+        self.num_edges_tr = num_edges_tr
+        self.max_edges = max_edges
+        self.max_nodes = max_nodes
+        self.max_graphs = max_graphs
         key = jax.random.PRNGKey(seed)
-        n_batches = len(i_tr) // batch_size
-        self.idxs = jax.random.permutation(key, n_batches * batch_size).reshape(n_batches, batch_size)
+        self.idxs = jax.random.permutation(key, len(i_tr))
+        self.batch_list, self.graph_segments = _make_batch_list()
+
+    def _make_batch_list():
+        total_graphs_added = 0
+        batch_list = []
+        graph_segment_list = []
+        while total_graphs_added < len(self.idxs):
+            batch_idxs = []
+            batch_graph_segments = []
+            batch_nodes_added = 0
+            batch_edges_added = 0
+            while True:
+                tr_idx = self.idxs[total_graphs_added]
+                batch_nodes_added += self.num_nodes_tr[tr_idx] 
+                batch_edges_added += self.num_edges_tr[tr_idx]
+                if len(batch_idxs) >= self.max_graphs or batch_nodes_added >= self.max_nodes or batch_edges_added >= self.max_edges:
+                    break
+                batch_graph_segments.extend([len(batch_idxs)] * self.num_nodes_tr[tr_idx])
+                batch_idxs.append(tr_idx)
+                total_graphs_added += 1
+            batch_list.append(batch_idxs)
+            graph_segment_list.append(batch_graph_segments.extend([-1] * (max_graphs - len(batch_idxs))))
+        return batch_list, jnp.array(graph_segment_list)
+
 
     def get_batch(self, batch_num):
-        batch_idxs = self.idxs[batch_num]
-        i_nums = self.i_tr[batch_idxs]
+        batch_idxs = self.batch_list[batch_num]
+        batch_graph_segments = self.graph_segments[batch_num]
+        batch_num_nodes = self.num_nodes_tr[batch_idxs]
+        batch_num_edges = self.num_edges_tr[batch_idxs]
+
+        def flatten_data(batch_data, batch_num_data, max_num_data, fill_value, offsets)
+            flattened_data = jnp.fill((max_num_data, *data.shape[2:]), fill_value)
+            data_flattened = 0
+            for i, (graph_data, graph_num_data) in enumerate(zip(batch_data, batch_num_data)):
+                next_data_idx = data_flattened + graph_num_data
+                data_fill = graph_data[:graph_num_data]
+                if offsets is not None:
+                    data_fill += offsets[i]
+                flattened_data[data_flattened:next_data_idx] = graph_data[:graph_num_data]
+
+                data_flattened = next_data_idx
+            return flattened_data
+
+        def flatten_nodes(batch_data):
+            return flatten_data(batch_data, batch_num_nodes, self.max_nodes, 0, None)
+
+        def flatten_edges(batch_data):
+            return flatten_data(batch_data, batch_num_edges, self.max_edges, -1, jnp.cumsum([0] + batch_num_nodes[:-1]))
+
+        i_nums = flatten_nodes(self.i_tr[batch_idxs])
         i_batch = jax.nn.one_hot(i_nums, self.num_elements) 
-        x_batch = self.x_tr[batch_idxs]
-        edges_batch = self.edges_tr[batch_idxs]
-        f_batch = self.f_tr[batch_idxs]
-        y_batch = jnp.expand_dims(self.y_tr[batch_idxs], -1)
-        return i_batch, x_batch, edges_batch, f_batch, y_batch  
+        x_batch = flatten_nodes(self.x_tr[batch_idxs])
+        edges_batch = flatten_edges(self.edges_tr[batch_idxs])
+        f_batch = flatten_nodes(self.f_tr[batch_idxs])
+        y_batch = flatten_nodes(jnp.expand_dims(self.y_tr[batch_idxs], -1))
+        return i_batch, x_batch, edges_batch, f_batch, y_batch, batch_graph_segments
 
 if __name__ == "__main__":
     import sys
