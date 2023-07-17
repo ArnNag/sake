@@ -7,7 +7,7 @@ import sake
 from jax_tqdm import loop_tqdm
 from utils import ELEMENT_MAP, NUM_ELEMENTS, select
 
-def run(prefix, e_loss_factor=0, subset=None):
+def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, subset=None):
     ds_tr = onp.load(prefix + "spice_train.npz")
     i_tr = ELEMENT_MAP[ds_tr["atomic_numbers"]]
     x_tr = ds_tr["pos"]
@@ -86,7 +86,7 @@ def run(prefix, e_loss_factor=0, subset=None):
     
     @jax.jit
     def epoch(state, i_tr, x_tr, edges_tr, f_tr, y_tr):
-        loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=state.step, max_nodes=1000, max_edges=1000, max_graphs=100, num_elements=NUM_ELEMENTS)
+        loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=state.step, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs, num_elements=NUM_ELEMENTS)
 
         @loop_tqdm(len(loader))
         def loop_body(idx, state):
@@ -109,11 +109,11 @@ def run(prefix, e_loss_factor=0, subset=None):
         state = jax.lax.fori_loop(0, n, loop_body, state)
         return state
 
-    init_loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=2666, max_nodes=1000, max_edges=1000, max_graphs=100, num_elements=NUM_ELEMENTS)
-    i0, x0, m0 = init_loader.get_batch(0)[:2]
+    init_loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=2666, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs, num_elements=NUM_ELEMENTS)
+    i0, x0, edges0 = init_loader.get_batch(0)[:3]
 
     key = jax.random.PRNGKey(2666)
-    params = model.init(key, i0, x0, m0)
+    params = model.init(key, i0, x0, edges0)
 
     scheduler = optax.warmup_cosine_decay_schedule(
         init_value=1e-6,
@@ -189,7 +189,12 @@ class SPICEBatchLoader:
                 batch_idxs.append(tr_idx)
                 total_graphs_added += 1
             batch_list.append(batch_idxs)
-            graph_segment_list.append(batch_graph_segments.extend([-1] * (self.max_graphs - len(batch_idxs))))
+            batch_graph_segments.extend([-1] * (self.max_nodes - len(batch_graph_segments)))
+            graph_segment_list.append(batch_graph_segments)
+        print("num_nodes_tr:", self.num_nodes_tr)
+        print("num_edges_tr:", self.num_edges_tr)
+        print("batch_list:", batch_list)
+        print("graph_segment_list:", graph_segment_list)
         return batch_list, jnp.array(graph_segment_list)
 
 
@@ -200,14 +205,14 @@ class SPICEBatchLoader:
         batch_num_edges = self.num_edges_tr[batch_idxs]
 
         def flatten_data(batch_data, batch_num_data, max_num_data, fill_value, offsets):
-            flattened_data = jnp.fill((max_num_data, *data.shape[2:]), fill_value)
+            flattened_data = jnp.full((max_num_data, *batch_data.shape[2:]), fill_value)
             data_flattened = 0
             for i, (graph_data, graph_num_data) in enumerate(zip(batch_data, batch_num_data)):
                 next_data_idx = data_flattened + graph_num_data
                 data_fill = graph_data[:graph_num_data]
                 if offsets is not None:
                     data_fill += offsets[i]
-                flattened_data[data_flattened:next_data_idx] = graph_data[:graph_num_data]
+                flattened_data.at[data_flattened:next_data_idx].set(graph_data[:graph_num_data])
 
                 data_flattened = next_data_idx
             return flattened_data
@@ -223,9 +228,14 @@ class SPICEBatchLoader:
         x_batch = flatten_nodes(self.x_tr[batch_idxs])
         edges_batch = flatten_edges(self.edges_tr[batch_idxs])
         f_batch = flatten_nodes(self.f_tr[batch_idxs])
-        y_batch = flatten_nodes(jnp.expand_dims(self.y_tr[batch_idxs], -1))
+        y_batch = jnp.expand_dims(jnp.pad(self.y_tr[batch_idxs], (0, self.max_graphs - len(batch_idxs))), -1)
+        print("i_batch shape:", i_batch.shape)
+        print("x_batch shape:", x_batch.shape)
+        print("edges_batch shape:", edges_batch.shape)
+        print("f_batch shape:", f_batch.shape)
+        print("y_batch shape:", y_batch.shape)
         return i_batch, x_batch, edges_batch, f_batch, y_batch, batch_graph_segments
 
 if __name__ == "__main__":
     import sys
-    run(sys.argv[1], float(sys.argv[2]), int(sys.argv[3]))
+    run(sys.argv[1], e_loss_factor=float(sys.argv[2]), subset=int(sys.argv[3]))
