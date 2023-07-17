@@ -7,13 +7,15 @@ import sake
 from jax_tqdm import loop_tqdm
 from utils import ELEMENT_MAP, NUM_ELEMENTS, select
 
-def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
+def run(prefix, e_loss_factor=0, subset=None):
     ds_tr = onp.load(prefix + "spice_train.npz")
     i_tr = ELEMENT_MAP[ds_tr["atomic_numbers"]]
     x_tr = ds_tr["pos"]
     f_tr = ds_tr["forces"]
     y_tr = ds_tr["formation_energy"]
     edges_tr = ds_tr["edges"]
+    num_nodes_tr = ds_tr["num_nodes"]
+    num_edges_tr = ds_tr["num_edges"]
     subset_labels = ds_tr["subsets"]
 
     if subset >= 0: 
@@ -25,7 +27,6 @@ def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
         for _split in ["tr"]:
             locals()["%s_%s" % (_var, _split)] = jnp.array(locals()["%s_%s" % (_var, _split)])
 
-    N_BATCHES = len(i_tr) // batch_size
 
     from sake.utils import coloring
     from functools import partial
@@ -85,9 +86,9 @@ def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
     
     @jax.jit
     def epoch(state, i_tr, x_tr, edges_tr, f_tr, y_tr):
-        loader = SPICEBatchLoader(i_tr, x_tr, edges_tr, f_tr, y_tr, state.step, batch_size, NUM_ELEMENTS)
+        loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=state.step, max_nodes=1000, max_edges=1000, max_graphs=100, num_elements=NUM_ELEMENTS)
 
-        @loop_tqdm(N_BATCHES)
+        @loop_tqdm(len(loader))
         def loop_body(idx, state):
             # i, x, m, y = next(iterator)
             # i, x, m, y = jnp.squeeze(i), jnp.squeeze(x), jnp.squeeze(m), jnp.squeeze(y)
@@ -96,7 +97,7 @@ def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
             state = step_with_loss(state, i, x, edges, f, y)
             return state
 
-        state = jax.lax.fori_loop(0, N_BATCHES, loop_body, state)
+        state = jax.lax.fori_loop(0, len(loader), loop_body, state)
 
         return state
 
@@ -108,7 +109,7 @@ def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
         state = jax.lax.fori_loop(0, n, loop_body, state)
         return state
 
-    init_loader = SPICEBatchLoader(i_tr, x_tr, edges_tr, f_tr, y_tr, 2666, batch_size, NUM_ELEMENTS)
+    init_loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=2666, max_nodes=1000, max_edges=1000, max_graphs=100, num_elements=NUM_ELEMENTS)
     i0, x0, m0 = init_loader.get_batch(0)[:2]
 
     key = jax.random.PRNGKey(2666)
@@ -117,8 +118,8 @@ def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
     scheduler = optax.warmup_cosine_decay_schedule(
         init_value=1e-6,
         peak_value=1e-4,
-        warmup_steps=100 * N_BATCHES,
-        decay_steps=1900 * N_BATCHES,
+        warmup_steps=100 * len(i_tr) // len(init_loader),
+        decay_steps=1900 * len(i_tr) // len(init_loader),
     )
 
     optimizer = optax.chain(
@@ -143,7 +144,7 @@ def run(prefix, batch_size=32, e_loss_factor=1, subset=None):
         state = epoch(state, i_tr, x_tr, edges_tr, f_tr, y_tr)
         print("after epoch")
         assert state.opt_state.notfinite_count <= 10
-        save_checkpoint(f"_{prefix}batch_{batch_size}_eloss_{e_loss_factor:.0e}_subset_{subset}", target=state, keep_every_n_steps=10, step=idx_batch)
+        save_checkpoint(f"_{prefix}eloss_{e_loss_factor:.0e}_subset_{subset}", target=state, keep_every_n_steps=10, step=idx_batch)
 
 '''
 Initialize for every epoch with a unique seed.
@@ -151,7 +152,6 @@ Initialize for every epoch with a unique seed.
 class SPICEBatchLoader:
 
     def __init__(self, i_tr, x_tr, edges_tr, f_tr, y_tr, num_nodes_tr, num_edges_tr, seed, max_edges, max_nodes, max_graphs, num_elements):
-        self.max_graphs = max_graphs
         self.num_elements = num_elements
         self.i_tr = i_tr
         self.x_tr = x_tr
@@ -165,9 +165,12 @@ class SPICEBatchLoader:
         self.max_graphs = max_graphs
         key = jax.random.PRNGKey(seed)
         self.idxs = jax.random.permutation(key, len(i_tr))
-        self.batch_list, self.graph_segments = _make_batch_list()
+        self.batch_list, self.graph_segments = self._make_batch_list()
 
-    def _make_batch_list():
+    def __len__(self):
+        return len(self.batch_list)
+
+    def _make_batch_list(self):
         total_graphs_added = 0
         batch_list = []
         graph_segment_list = []
@@ -186,7 +189,7 @@ class SPICEBatchLoader:
                 batch_idxs.append(tr_idx)
                 total_graphs_added += 1
             batch_list.append(batch_idxs)
-            graph_segment_list.append(batch_graph_segments.extend([-1] * (max_graphs - len(batch_idxs))))
+            graph_segment_list.append(batch_graph_segments.extend([-1] * (self.max_graphs - len(batch_idxs))))
         return batch_list, jnp.array(graph_segment_list)
 
 
@@ -196,7 +199,7 @@ class SPICEBatchLoader:
         batch_num_nodes = self.num_nodes_tr[batch_idxs]
         batch_num_edges = self.num_edges_tr[batch_idxs]
 
-        def flatten_data(batch_data, batch_num_data, max_num_data, fill_value, offsets)
+        def flatten_data(batch_data, batch_num_data, max_num_data, fill_value, offsets):
             flattened_data = jnp.fill((max_num_data, *data.shape[2:]), fill_value)
             data_flattened = 0
             for i, (graph_data, graph_num_data) in enumerate(zip(batch_data, batch_num_data)):
@@ -225,4 +228,4 @@ class SPICEBatchLoader:
 
 if __name__ == "__main__":
     import sys
-    run(sys.argv[1], int(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]))
+    run(sys.argv[1], float(sys.argv[2]), int(sys.argv[3]))
