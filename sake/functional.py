@@ -49,5 +49,5 @@ def get_h_cat_ht(h):
     return h_cat_ht
 
 def get_h_cat_ht_sparse(h, edges):
-    return h[edges].reshape(h.shape[-2], -1)
+    return h[edges].reshape(edges.shape[0], -1)
 
