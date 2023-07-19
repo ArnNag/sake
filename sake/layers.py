@@ -266,7 +266,6 @@ class SparseSAKELayer(SAKELayer):
         jax.debug.print("h_e_mtx shape: {}", h_e_mtx.shape)
         jax.debug.print("x_minus_xt before norm shape: {}", x_minus_xt.shape)
         jax.debug.print("x_minus_xt_norm shape: {}", x_minus_xt_norm.shape)
-        jax.debug.print("idxs shape: {}", idxs.shape)
         coefficients = self.x_mixing(h_e_mtx)
         jax.debug.print("coefficients shape: {}", coefficients.shape)
 
@@ -275,16 +274,17 @@ class SparseSAKELayer(SAKELayer):
         x_minus_xt = x_minus_xt / (x_minus_xt_norm + 1e-5) # ** 2
         jax.debug.print("x_minus_xt after norm shape: {}", x_minus_xt.shape)
 
-        # (n_edges, coefficients, 3)
-        combinations = x_minus_xt * coefficients
+        # e: edge axis; x: position axis, c: coefficient axis
+        combinations = jnp.einsum("ex,ec->ecx", x_minus_xt, coefficients)
         jax.debug.print("combinations shape: {}", combinations.shape)
 
         # (n_edges, coefficients, 3)
         # dense: combinations_sum = combinations.mean(axis=-3)
-        combinations_sum = segment_mean(
+        combinations_sum = segment_mean(combinations,
             edges[:,1],
-            num_segments = x_minus_xt.shape[-2]
-        ).swapaxes(-2, -4)
+            num_segments = 997
+        )
+        jax.debug.print("combinations_sum shape: {}", combinations_sum.shape)
 
         combinations_norm = (combinations_sum ** 2).sum(-1)# .pow(0.5)
 
