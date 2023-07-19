@@ -357,8 +357,9 @@ class SparseSAKELayer(SAKELayer):
 
     def semantic_attention(self, h_e_mtx, mask=None):
         # (batch_size, n, n, n_heads)
+        jax.debug.print("h_e_mtx shape inside semantic_attention: {}", att.shape)
         att = self.semantic_attention_mlp(h_e_mtx)
-        jax.debug.print("att shape: {}", att)
+        jax.debug.print("att shape: {}", att.shape)
 
         # (batch_size, n, n, n_heads)
         # att = att.view(*att.shape[:-1], self.n_heads)
