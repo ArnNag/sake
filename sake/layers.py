@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from flax import linen as nn
 from typing import Callable, Optional
 from .utils import ExpNormalSmearing
-from .functional import get_x_minus_xt, get_x_minus_xt_norm, get_h_cat_ht, get_x_minus_xt_sparse
+from .functional import get_x_minus_xt, get_x_minus_xt_norm, get_h_cat_ht_sparse, get_x_minus_xt_sparse
 from functools import partial
 
 def double_sigmoid(x):
@@ -401,13 +401,11 @@ class SparseSAKELayer(SAKELayer):
             he=None,
         ):
 
-        senders = edges[:,0]
-        receivers = edges[:,1]
-        x_minus_xt = get_x_minus_xt_sparse(x, senders, receivers)
+        x_minus_xt = get_x_minus_xt_sparse(x, edges)
         jax.debug.print("x_minus_xt shape: {}", x_minus_xt.shape)
         x_minus_xt_norm = get_x_minus_xt_norm(x_minus_xt=x_minus_xt)
         jax.debug.print("x_minus_xt_norm shape: {}", x_minus_xt_norm.shape)
-        h_cat_ht = get_h_cat_ht_sparse(h)
+        h_cat_ht = get_h_cat_ht_sparse(h, edges)
         jax.debug.print("h_cat_ht shape: {}", h_cat_ht.shape)
 
         if he is not None:

@@ -7,8 +7,10 @@ INF = 1e5
 def get_x_minus_xt(x):
     return jnp.expand_dims(x, -3) - jnp.expand_dims(x, -2)
 
-def get_x_minus_xt_sparse(x, senders, receivers):
-    return x[senders] - x[receivers]
+def get_x_minus_xt_sparse(x, edges):
+    # x_edges shape: (n_nodes, 2, 3)
+    x_edges = x[edges]
+    return x_edges[:,1,:] - x_edges[:,0,:] # shape: (n_nodes, 3)
 
 def get_x_minus_xt_norm(
     x_minus_xt,
@@ -46,6 +48,6 @@ def get_h_cat_ht(h):
 
     return h_cat_ht
 
-def get_h_cat_ht_sparse(h, senders, receivers):
-    return jnp.concatenate([h[senders], h[receivers]], axis=-1)
+def get_h_cat_ht_sparse(h, edges):
+    return h[edges].reshape(h.shape[-2], -1)
 
