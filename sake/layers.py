@@ -193,7 +193,6 @@ class DenseSAKELayer(SAKELayer):
             euclidean_attention = self.cutoff(x_minus_xt_norm)
         else:
             euclidean_attention = 1.0
-
         combined_attention = euclidean_attention * semantic_attention
         if mask is not None:
             combined_attention = combined_attention - 1e5 * (1 - jnp.expand_dims(mask, -1))
@@ -224,8 +223,12 @@ class DenseSAKELayer(SAKELayer):
 
         h_e_mtx = self.edge_model(h_cat_ht, x_minus_xt_norm)
         euclidean_attention, semantic_attention, combined_attention = self.combined_attention(x_minus_xt_norm, h_e_mtx, mask=mask)
+        jax.debug.print("h_e_mtx shape: {}", h_e_mtx.shape)
+        jax.debug.print("combined attention shape: {}", combined_attention.shape)
         h_e_att = jnp.expand_dims(h_e_mtx, -1) * jnp.expand_dims(combined_attention, -2)
+        jax.debug.print("h_e_att shape before reshape: {}", h_e_att.shape)
         h_e_att = jnp.reshape(h_e_att, h_e_att.shape[:-2] + (-1, ))
+        jax.debug.print("h_e_att shape after reshape: {}", h_e_att.shape)
         h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, mask=mask)
 
         if not self.use_spatial_attention:
