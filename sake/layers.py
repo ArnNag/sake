@@ -338,7 +338,6 @@ class SparseSAKELayer(SAKELayer):
             he=None,
         ):
 
-        self.max_nodes = 997
         x_minus_xt = get_x_minus_xt_sparse(x, edges)
         jax.debug.print("x_minus_xt shape: {}", x_minus_xt.shape)
         x_minus_xt_norm = get_x_minus_xt_norm(x_minus_xt=x_minus_xt)
