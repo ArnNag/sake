@@ -357,7 +357,8 @@ class SparseSAKELayer(SAKELayer):
         jax.debug.print("euclidean_attention: {}", euclidean_attention)
         jax.debug.print("semantic_attention shape: {}", semantic_attention.shape)
         jax.debug.print("combined_attention shape: {}", combined_attention.shape)
-        h_e_att = h_e_mtx * combined_attention
+        # e: edge axis; f: hidden feature axis; h: head axis
+        h_e_att = jnp.einsum("ef,eh->efh", h_e_mtx, combined_attention) 
         jax.debug.print("h_e_att shape before reshape", h_e_att.shape)
         h_e_att = jnp.reshape(h_e_att, h_e_att.shape[:-2] + (-1, ))
         jax.debug.print("h_e_att shape after reshape", h_e_att.shape)
