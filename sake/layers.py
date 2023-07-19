@@ -351,7 +351,7 @@ class SparseSAKELayer(SAKELayer):
         h_e_mtx = self.edge_model(h_cat_ht, x_minus_xt_norm)
         jax.debug.print("h_e_mtx shape: {}", h_e_mtx.shape)
         euclidean_attention, semantic_attention, combined_attention = self.combined_attention(x_minus_xt_norm, h_e_mtx, edges)
-        jax.debug.print("euclidean_attention shape: {}", euclidean_attention.shape)
+        jax.debug.print("euclidean_attention: {}", euclidean_attention)
         jax.debug.print("semantic_attention shape: {}", semantic_attention.shape)
         jax.debug.print("combined_attention shape: {}", combined_attention.shape)
         h_e_att = h_e_mtx * combined_attention
