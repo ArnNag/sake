@@ -359,9 +359,9 @@ class SparseSAKELayer(SAKELayer):
         jax.debug.print("combined_attention shape: {}", combined_attention.shape)
         # e: edge axis; f: hidden feature axis; h: head axis
         h_e_att = jnp.einsum("ef,eh->efh", h_e_mtx, combined_attention) 
-        jax.debug.print("h_e_att shape before reshape", h_e_att.shape)
+        jax.debug.print("h_e_att shape before reshape: {}", h_e_att.shape)
         h_e_att = jnp.reshape(h_e_att, h_e_att.shape[:-2] + (-1, ))
-        jax.debug.print("h_e_att shape after reshape", h_e_att.shape)
+        jax.debug.print("h_e_att shape after reshape {}", h_e_att.shape)
         h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, edges)
 
         if not self.use_spatial_attention:
