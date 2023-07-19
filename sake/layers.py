@@ -363,13 +363,6 @@ class SparseSAKELayer(SAKELayer):
 
         # (batch_size, n, n, n_heads)
         # att = att.view(*att.shape[:-1], self.n_heads)
-        att = att - 1e5 * jnp.expand_dims(jnp.eye(
-            att.shape[-2],
-            att.shape[-2],
-        ), -1)
-
-        if mask is not None:
-            att = att - 1e5 * (1 - jnp.expand_dims(mask, -1))
 
         att = jax.nn.softmax(att, axis=-2)
         return att
