@@ -68,7 +68,6 @@ class DenseSAKEModel(SAKEModel):
 
 class SparseSAKEModel(SAKEModel):
     layer_type: type[SAKELayer]=SparseSAKELayer
-    max_nodes: int=5e3
 
     def setup(self):
         self.embedding_in = nn.Dense(self.hidden_features)
@@ -102,7 +101,7 @@ class SparseSAKEModel(SAKEModel):
             )
 
         self.layers = [getattr(self, "d%s" % idx) for idx in range(self.depth)]
-        self.max_nodes = max_nodes
+        self.max_nodes = 997
 
     def __call__(self, h, x, v=None, edges=None, he=None):
         h = self.embedding_in(h)
