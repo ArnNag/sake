@@ -407,7 +407,7 @@ class SparseSAKELayer(SAKELayer):
         jax.debug.print("x_minus_xt shape: {}", x_minus_xt.shape)
         x_minus_xt_norm = get_x_minus_xt_norm(x_minus_xt=x_minus_xt)
         jax.debug.print("x_minus_xt_norm shape: {}", x_minus_xt_norm.shape)
-        h_cat_ht = get_h_cat_ht(h)
+        h_cat_ht = get_h_cat_ht_sparse(h)
         jax.debug.print("h_cat_ht shape: {}", h_cat_ht.shape)
 
         if he is not None:

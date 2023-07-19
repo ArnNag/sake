@@ -45,3 +45,7 @@ def get_h_cat_ht(h):
     )
 
     return h_cat_ht
+
+def get_h_cat_ht_sparse(h, senders, receivers):
+    return jnp.concatenate([h[senders], h[receivers]], axis=-1)
+
