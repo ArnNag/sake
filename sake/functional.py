@@ -87,13 +87,13 @@ def segment_softmax(logits: jnp.ndarray,
     The segment softmax-ed ``logits``.
     """
     # First, subtract the segment max for numerical stability
-    maxs = segment_max(logits, segment_ids, num_segments, indices_are_sorted,
+    maxs = jax.ops.segment_max(logits, segment_ids, num_segments, indices_are_sorted,
                      unique_indices)
     logits = logits - maxs[segment_ids]
     # Then take the exp
     logits = jnp.exp(logits)
     # Then calculate the normalizers
-    normalizers = segment_sum(logits, segment_ids, num_segments,
+    normalizers = jax.ops.segment_sum(logits, segment_ids, num_segments,
                             indices_are_sorted, unique_indices)
     normalizers = normalizers[segment_ids]
     softmax = logits / normalizers
@@ -126,31 +126,3 @@ def segment_mean(data: jnp.ndarray,
       unique_indices=unique_indices)
   return nominator / jnp.maximum(denominator,
                                  jnp.ones(shape=[], dtype=denominator.dtype))
-
-def segment_max(data: jnp.ndarray,
-                segment_ids: jnp.ndarray,
-                num_segments: Optional[int] = None,
-                indices_are_sorted: bool = False,
-                unique_indices: bool = False):
-  """Alias for jax.ops.segment_max.
-
-  Args:
-    data: an array with the values to be maxed over.
-    segment_ids: an array with integer dtype that indicates the segments of
-      `data` (along its leading axis) to be maxed over. Values can be repeated
-      and need not be sorted. Values outside of the range [0, num_segments) are
-      dropped and do not contribute to the result.
-    num_segments: optional, an int with positive value indicating the number of
-      segments. The default is ``jnp.maximum(jnp.max(segment_ids) + 1,
-      jnp.max(-segment_ids))`` but since `num_segments` determines the size of
-      the output, a static value must be provided to use ``segment_max`` in a
-      ``jit``-compiled function.
-    indices_are_sorted: whether ``segment_ids`` is known to be sorted
-    unique_indices: whether ``segment_ids`` is known to be free of duplicates
-
-  Returns:
-    An array with shape ``(num_segments,) + data.shape[1:]`` representing
-    the segment maxs.
-  """
-  return jax.ops.segment_max(data, segment_ids, num_segments,
-                             indices_are_sorted, unique_indices)
