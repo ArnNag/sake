@@ -401,7 +401,7 @@ class SparseSAKELayer(SAKELayer):
             he=None,
         ):
 
-	senders = edges[:,0]
+        senders = edges[:,0]
         receivers = edges[:,1]
         x_minus_xt = get_x_minus_xt_sparse(x, senders, receivers)
         jax.debug.print("x_minus_xt shape: {}", x_minus_xt.shape)
