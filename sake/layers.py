@@ -289,11 +289,9 @@ class SparseSAKELayer(SAKELayer):
         # h_combinations = self.norm(h_combinations)
         return h_combinations, combinations
 
-    def aggregate(self, h_e_mtx, mask=None):
+    def aggregate(self, h_e_mtx, edges):
         # h_e_mtx = self.mask_self(h_e_mtx)
-        if mask is not None:
-            h_e_mtx = h_e_mtx * jnp.expand_dims(mask, -1)
-        h_e = h_e_mtx.sum(axis=-2)
+        h_e = segment_sum(h_e_mtx, edges[:,1], num_segments=self.max_nodes)
         return h_e
 
     def node_model(self, h, h_e, h_combinations):
@@ -340,6 +338,7 @@ class SparseSAKELayer(SAKELayer):
             he=None,
         ):
 
+        self.max_nodes = 997
         x_minus_xt = get_x_minus_xt_sparse(x, edges)
         jax.debug.print("x_minus_xt shape: {}", x_minus_xt.shape)
         x_minus_xt_norm = get_x_minus_xt_norm(x_minus_xt=x_minus_xt)
@@ -427,12 +426,14 @@ class EquivariantGraphConvolutionalLayer(nn.Module):
                 ],
             )
 
-    def aggregate(self, h_e_mtx, edges):
+    def aggregate(self, h_e_mtx, mask=None):
         # h_e_mtx = self.mask_self(h_e_mtx)
+        if mask is not None:
+            h_e_mtx = h_e_mtx * jnp.expand_dims(mask, -1)
         if self.sigmoid:
             h_e_weights = self.edge_model(h_e_mtx)
             h_e_mtx = h_e_weights * h_e_mtx
-        h_e = segment_sum(h_e_mtx, edges[:,1]
+        h_e = h_e_mtx.sum(axis=-2)
         return h_e
 
     def node_model(self, h, h_e):
