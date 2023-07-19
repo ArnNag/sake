@@ -84,11 +84,9 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
         state = state.apply_gradients(grads=grads)
         return state
     
-    @jax.jit
     def epoch(state, i_tr, x_tr, edges_tr, f_tr, y_tr):
         loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=state.step, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs, num_elements=NUM_ELEMENTS)
 
-        @loop_tqdm(len(loader))
         def loop_body(idx, state):
             # i, x, m, y = next(iterator)
             # i, x, m, y = jnp.squeeze(i), jnp.squeeze(x), jnp.squeeze(m), jnp.squeeze(y)
@@ -99,14 +97,6 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
 
         state = jax.lax.fori_loop(0, len(loader), loop_body, state)
 
-        return state
-
-    @partial(jax.jit, static_argnums=(4))
-    def many_epochs(state, i_tr, x_tr, y_tr, n=10):
-        def loop_body(idx_batch, state):
-            state = epoch(state, i_tr, x_tr, y_tr)
-            return state
-        state = jax.lax.fori_loop(0, n, loop_body, state)
         return state
 
     init_loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=2666, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs, num_elements=NUM_ELEMENTS)

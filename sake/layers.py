@@ -313,6 +313,7 @@ class SparseSAKELayer(SAKELayer):
         # att shape: (n_edges, n_heads)
         att = self.semantic_attention_mlp(h_e_mtx)
         jax.debug.print("att shape: {}", att.shape)
+        # return shape: (n_edges, n_heads)
         return segment_softmax(att, edges[:,1], num_segments=997)
 
     def combined_attention(self, x_minus_xt_norm, h_e_mtx, edges):
@@ -323,6 +324,7 @@ class SparseSAKELayer(SAKELayer):
         else:
             euclidean_attention = 1.0
 
+        # combined_attention shape: (n_edges, n_heads)
         combined_attention = euclidean_attention * semantic_attention
         combined_attention = combined_attention / jax.ops.segment_sum(combined_attention, edges[:,1], num_segments=997)[edges[:,1]]
         
