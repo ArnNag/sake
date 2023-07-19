@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from flax import linen as nn
 from typing import Callable, Optional
 from .utils import ExpNormalSmearing
-from .functional import get_x_minus_xt, get_x_minus_xt_norm, get_h_cat_ht
+from .functional import get_x_minus_xt, get_x_minus_xt_norm, get_h_cat_ht, get_x_minus_xt_sparse
 from functools import partial
 
 def double_sigmoid(x):
@@ -289,6 +289,7 @@ class SparseSAKELayer(SAKELayer):
         # (batch_size, n, n, n_coefficients)
         # coefficients = self.coefficients_mlp(h_e_mtx)# .unsqueeze(-1)
         jax.debug.print("h_e_mtx shape: {}", h_e_mtx.shape)
+        jax.debug.print("h_e_mtx shape: {}", h_e_mtx.shape)
         jax.debug.print("x_minus_xt before norm shape: {}", x_minus_xt.shape)
         jax.debug.print("x_minus_xt_norm shape: {}", x_minus_xt_norm.shape)
         jax.debug.print("idxs shape: {}", idxs.shape)
@@ -303,13 +304,13 @@ class SparseSAKELayer(SAKELayer):
         # (batch_size, n, n, coefficients, 3)
         combinations = jnp.expand_dims(x_minus_xt, -2) * jnp.expand_dims(coefficients, -1)
         jax.debug.print("combinations shape: {}", combinations.shape)
-        jax.debug.print("combinations.swapaxes(-3, -5) shape: {}", combinations.swapaxes(-3, -5).shape)
+        jax.debug.print("combinations.swapaxes(-3, -4) shape: {}", combinations.swapaxes(-3, -4).shape)
         jax.debug.print("idxs[...,-1] shape: {}", idxs[...,-1].shape)
 
         # (batch_size, n, n, coefficients, 3)
         # dense: combinations_sum = combinations.mean(axis=-3)
         combinations_sum = segment_mean(
-            combinations.swapaxes(-3, -5),
+            combinations.swapaxes(-3, -4),
             idxs[..., -1],
             num_segments = x_minus_xt.shape[-2]
         ).swapaxes(-2, -4)
@@ -357,6 +358,7 @@ class SparseSAKELayer(SAKELayer):
     def semantic_attention(self, h_e_mtx, mask=None):
         # (batch_size, n, n, n_heads)
         att = self.semantic_attention_mlp(h_e_mtx)
+        jax.debug.print("att shape: {}", att)
 
         # (batch_size, n, n, n_heads)
         # att = att.view(*att.shape[:-1], self.n_heads)
@@ -399,20 +401,29 @@ class SparseSAKELayer(SAKELayer):
             he=None,
         ):
 
-        x_minus_xt = get_x_minus_xt(x)
+	senders = edges[:,0]
+        receivers = edges[:,1]
+        x_minus_xt = get_x_minus_xt_sparse(x, senders, receivers)
+        jax.debug.print("x_minus_xt shape: {}", x_minus_xt.shape)
         x_minus_xt_norm = get_x_minus_xt_norm(x_minus_xt=x_minus_xt)
+        jax.debug.print("x_minus_xt_norm shape: {}", x_minus_xt_norm.shape)
         h_cat_ht = get_h_cat_ht(h)
+        jax.debug.print("h_cat_ht shape: {}", h_cat_ht.shape)
 
         if he is not None:
             h_cat_ht = jnp.concatenate([h_cat_ht, he], -1)
 
         if edges is not None:
-            mask = jnp.zeros((x.shape[-2], x.shape[-2]))
-            mask = mask.at[edges[:,0], edges[:,1]].set(1)
+            mask = jnp.zeros((x.shape[-2], x.shape[-2])).at[edges[:,0], edges[:,1]].set(1)
 
         h_e_mtx = self.edge_model(h_cat_ht, x_minus_xt_norm)
+        jax.debug.print("h_e_mtx shape: {}", h_e_mtx.shape)
         euclidean_attention, semantic_attention, combined_attention = self.combined_attention(x_minus_xt_norm, h_e_mtx, mask=mask)
+        jax.debug.print("euclidean_attention shape: {}", euclidean_attention.shape)
+        jax.debug.print("semantic_attention shape: {}", semantic_attention.shape)
+        jax.debug.print("combined_attention shape: {}", combined_attention.shape)
         h_e_att = jnp.expand_dims(h_e_mtx, -1) * jnp.expand_dims(combined_attention, -2)
+        jax.debug.print("h_e_att shape before reshape", h_e_att.shape)
         h_e_att = jnp.reshape(h_e_att, h_e_att.shape[:-2] + (-1, ))
         h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, idxs=edges)
 
@@ -425,7 +436,7 @@ class SparseSAKELayer(SAKELayer):
         h = self.node_model(h, h_e, h_combinations)
 
         if self.update:
-            if mask is not None:
+            if edges is not None:
                 delta_v = self.v_mixing(delta_v.swapaxes(-1, -2)).swapaxes(-1, -2).sum(axis=(-2, -3))
                 delta_v = delta_v / (mask.sum(-1, keepdims=True) + 1e-10)
             else:

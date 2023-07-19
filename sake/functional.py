@@ -7,6 +7,9 @@ INF = 1e5
 def get_x_minus_xt(x):
     return jnp.expand_dims(x, -3) - jnp.expand_dims(x, -2)
 
+def get_x_minus_xt_sparse(x, senders, receivers):
+    return x[senders] - x[receivers]
+
 def get_x_minus_xt_norm(
     x_minus_xt,
     epsilon: float=EPSILON,
