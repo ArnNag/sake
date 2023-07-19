@@ -70,6 +70,40 @@ class SparseSAKEModel(SAKEModel):
     layer_type: type[SAKELayer]=SparseSAKELayer
     max_nodes: int=5e3
 
+    def setup(self):
+        self.embedding_in = nn.Dense(self.hidden_features)
+        self.embedding_out = nn.Sequential(
+            [
+                nn.Dense(self.hidden_features),
+                self.activation,
+                nn.Dense(self.out_features),
+            ],
+        )
+
+        if isinstance(self.update, bool):
+            update = [self.update for _ in range(self.depth)]
+        else:
+            update = self.update
+
+        for idx in range(self.depth):
+            setattr(
+                self,
+                "d%s" % idx,
+                self.layer_type(
+                    hidden_features=self.hidden_features,
+                    out_features=self.hidden_features,
+                    update=update[idx],
+                    use_semantic_attention=self.use_semantic_attention,
+                    use_euclidean_attention=self.use_euclidean_attention,
+                    use_spatial_attention=self.use_spatial_attention,
+                    n_heads=self.n_heads,
+                    cutoff=self.cutoff,
+                ),
+            )
+
+        self.layers = [getattr(self, "d%s" % idx) for idx in range(self.depth)]
+        self.max_nodes = max_nodes
+
     def __call__(self, h, x, v=None, edges=None, he=None):
         h = self.embedding_in(h)
         for layer in self.layers:
