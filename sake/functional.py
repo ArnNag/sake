@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+from typing import Optional, Union, Iterable, Mapping
 
 EPSILON = 1e-5
 INF = 1e5
@@ -51,6 +52,7 @@ def get_h_cat_ht(h):
 def get_h_cat_ht_sparse(h, edges):
     return h[edges].reshape(edges.shape[0], -1)
 
+ArrayTree = Union[jnp.ndarray, Iterable['ArrayTree'], Mapping[Any, 'ArrayTree']]
 def segment_softmax(logits: jnp.ndarray,
                     segment_ids: jnp.ndarray,
                     num_segments: Optional[int] = None,
