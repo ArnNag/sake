@@ -39,7 +39,6 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
                 out_features=64,
                 depth=6,
                 update=False, # [False, False, False, True, True, True],
-                max_nodes=max_nodes
             )
 
             self.mlp = nn.Sequential(
