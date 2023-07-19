@@ -1,6 +1,6 @@
 import jax
 import jax.numpy as jnp
-from typing import Optional, Union, Iterable, Mapping
+from typing import Optional, Union, Iterable, Mapping, Any
 
 EPSILON = 1e-5
 INF = 1e5
