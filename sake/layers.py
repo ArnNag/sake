@@ -291,7 +291,7 @@ class SparseSAKELayer(SAKELayer):
 
     def aggregate(self, h_e_mtx, edges):
         # h_e_mtx = self.mask_self(h_e_mtx)
-        h_e = segment_sum(h_e_mtx, edges[:,1], num_segments=997)
+        h_e = jax.ops.segment_sum(h_e_mtx, edges[:,1], num_segments=997)
         return h_e
 
     def node_model(self, h, h_e, h_combinations):
@@ -321,7 +321,7 @@ class SparseSAKELayer(SAKELayer):
             euclidean_attention = 1.0
 
         combined_attention = euclidean_attention * semantic_attention
-        combined_attention = combined_attention / segment_sum(combined_attention, edges[:,1], num_segments=997)[edges[:,1]]
+        combined_attention = combined_attention / jax.ops.segment_sum(combined_attention, edges[:,1], num_segments=997)[edges[:,1]]
         
         return euclidean_attention, semantic_attention, combined_attention
 
