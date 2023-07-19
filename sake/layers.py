@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from flax import linen as nn
 from typing import Callable, Optional
 from .utils import ExpNormalSmearing
-from .functional import get_x_minus_xt, get_x_minus_xt_norm, get_h_cat_ht_sparse, get_x_minus_xt_sparse, segment_mean, segment_softmax
+from .functional import get_x_minus_xt, get_x_minus_xt_norm, get_h_cat_ht, get_h_cat_ht_sparse, get_x_minus_xt_sparse, segment_mean, segment_softmax
 from functools import partial
 
 def double_sigmoid(x):
