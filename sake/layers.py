@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from flax import linen as nn
 from typing import Callable, Optional
 from .utils import ExpNormalSmearing
-from .functional import get_x_minus_xt, get_x_minus_xt_norm, get_h_cat_ht_sparse, get_x_minus_xt_sparse
+from .functional import get_x_minus_xt, get_x_minus_xt_norm, get_h_cat_ht_sparse, get_x_minus_xt_sparse, segment_mean, segment_softmax
 from functools import partial
 
 def double_sigmoid(x):
@@ -256,39 +256,10 @@ class DenseSAKELayer(SAKELayer):
         return h, x, v
 
 
-def segment_mean(data: jnp.ndarray,
-                 segment_ids: jnp.ndarray,
-                 num_segments: Optional[int] = None,
-                 indices_are_sorted: bool = False,
-                 unique_indices: bool = False):
-  """Returns mean for each segment.
-  Args:
-    data: the values which are averaged segment-wise.
-    segment_ids: indices for the segments.
-    num_segments: total number of segments.
-    indices_are_sorted: whether ``segment_ids`` is known to be sorted.
-    unique_indices: whether ``segment_ids`` is known to be free of duplicates.
-  """
-  nominator = jax.ops.segment_sum(
-      data,
-      segment_ids,
-      num_segments,
-      indices_are_sorted=indices_are_sorted,
-      unique_indices=unique_indices)
-  denominator = jax.ops.segment_sum(
-      jnp.ones_like(data),
-      segment_ids,
-      num_segments,
-      indices_are_sorted=indices_are_sorted,
-      unique_indices=unique_indices)
-  return nominator / jnp.maximum(denominator,
-                                 jnp.ones(shape=[], dtype=denominator.dtype))
-
 class SparseSAKELayer(SAKELayer):
-    def spatial_attention(self, h_e_mtx, x_minus_xt, x_minus_xt_norm, idxs):
+    def spatial_attention(self, h_e_mtx, x_minus_xt, x_minus_xt_norm, edges):
         # (batch_size, n, n, n_coefficients)
         # coefficients = self.coefficients_mlp(h_e_mtx)# .unsqueeze(-1)
-        jax.debug.print("h_e_mtx shape: {}", h_e_mtx.shape)
         jax.debug.print("h_e_mtx shape: {}", h_e_mtx.shape)
         jax.debug.print("x_minus_xt before norm shape: {}", x_minus_xt.shape)
         jax.debug.print("x_minus_xt_norm shape: {}", x_minus_xt_norm.shape)
@@ -301,17 +272,14 @@ class SparseSAKELayer(SAKELayer):
         x_minus_xt = x_minus_xt / (x_minus_xt_norm + 1e-5) # ** 2
         jax.debug.print("x_minus_xt after norm shape: {}", x_minus_xt.shape)
 
-        # (batch_size, n, n, coefficients, 3)
-        combinations = jnp.expand_dims(x_minus_xt, -2) * jnp.expand_dims(coefficients, -1)
+        # (n_edges, coefficients, 3)
+        combinations = x_minus_xt * coefficients
         jax.debug.print("combinations shape: {}", combinations.shape)
-        jax.debug.print("combinations.swapaxes(-3, -4) shape: {}", combinations.swapaxes(-3, -4).shape)
-        jax.debug.print("idxs[...,-1] shape: {}", idxs[...,-1].shape)
 
-        # (batch_size, n, n, coefficients, 3)
+        # (n_edges, coefficients, 3)
         # dense: combinations_sum = combinations.mean(axis=-3)
         combinations_sum = segment_mean(
-            combinations.swapaxes(-3, -4),
-            idxs[..., -1],
+            edges[:,1],
             num_segments = x_minus_xt.shape[-2]
         ).swapaxes(-2, -4)
 
@@ -339,45 +307,23 @@ class SparseSAKELayer(SAKELayer):
         out = h + out
         return out
 
-    def euclidean_attention(self, x_minus_xt_norm, mask=None):
-        # (batch_size, n, n, 1)
-        _x_minus_xt_norm = x_minus_xt_norm + 1e5 * jnp.expand_dims(jnp.eye(
-            x_minus_xt_norm.shape[-2],
-            x_minus_xt_norm.shape[-2],
-        ), -1)
 
-        if mask is not None:
-            _x_minus_xt_norm = _x_minus_xt_norm + 1e5 * (1- jnp.expand_dims(mask, -1))
-
-        att = jax.nn.softmax(
-            -_x_minus_xt_norm * jnp.exp(self.log_gamma),
-            axis=-2,
-        )
-        return att
-
-    def semantic_attention(self, h_e_mtx, mask=None):
-        # (batch_size, n, n, n_heads)
+    def semantic_attention(self, h_e_mtx, edges):
+        # att shape: (n_edges, n_heads)
         att = self.semantic_attention_mlp(h_e_mtx)
         jax.debug.print("att shape: {}", att.shape)
+        return segment_softmax(att, edges[:,1], num_segments=self.max_nodes)
 
-        # (batch_size, n, n, n_heads)
-        # att = att.view(*att.shape[:-1], self.n_heads)
-
-        att = jax.nn.softmax(att, axis=-2)
-        return att
-
-    def combined_attention(self, x_minus_xt_norm, h_e_mtx, mask=None):
-        semantic_attention = self.semantic_attention(h_e_mtx, mask=mask)
+    def combined_attention(self, x_minus_xt_norm, h_e_mtx, edges):
+        # semantic_attention shape: (n_edges, n_heads)
+        semantic_attention = self.semantic_attention(h_e_mtx, edges)
         if self.cutoff is not None:
             euclidean_attention = self.cutoff(x_minus_xt_norm)
         else:
             euclidean_attention = 1.0
 
         combined_attention = euclidean_attention * semantic_attention
-        if mask is not None:
-            combined_attention = combined_attention - 1e5 * (1 - jnp.expand_dims(mask, -1))
-        # combined_attention = jax.nn.softmax(combined_attention, axis=-2)
-        combined_attention = combined_attention / combined_attention.sum(axis=-2, keepdims=True)
+        combined_attention = combined_attention / segment_sum(combined_attention, edges[:,1], num_segments=self.max_nodes)[edges[:,1]]
         
         return euclidean_attention, semantic_attention, combined_attention
 
@@ -404,34 +350,29 @@ class SparseSAKELayer(SAKELayer):
         if he is not None:
             h_cat_ht = jnp.concatenate([h_cat_ht, he], -1)
 
-        if edges is not None:
-            mask = jnp.zeros((x.shape[-2], x.shape[-2])).at[edges[:,0], edges[:,1]].set(1)
-
         h_e_mtx = self.edge_model(h_cat_ht, x_minus_xt_norm)
         jax.debug.print("h_e_mtx shape: {}", h_e_mtx.shape)
-        euclidean_attention, semantic_attention, combined_attention = self.combined_attention(x_minus_xt_norm, h_e_mtx, mask=mask)
+        euclidean_attention, semantic_attention, combined_attention = self.combined_attention(x_minus_xt_norm, h_e_mtx, edges)
         jax.debug.print("euclidean_attention shape: {}", euclidean_attention.shape)
         jax.debug.print("semantic_attention shape: {}", semantic_attention.shape)
         jax.debug.print("combined_attention shape: {}", combined_attention.shape)
-        h_e_att = jnp.expand_dims(h_e_mtx, -1) * jnp.expand_dims(combined_attention, -2)
+        h_e_att = h_e_mtx * combined_attention
         jax.debug.print("h_e_att shape before reshape", h_e_att.shape)
         h_e_att = jnp.reshape(h_e_att, h_e_att.shape[:-2] + (-1, ))
-        h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, idxs=edges)
+        jax.debug.print("h_e_att shape after reshape", h_e_att.shape)
+        h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, edges)
 
         if not self.use_spatial_attention:
             h_combinations = jnp.zeros_like(h_combinations)
             delta_v = jnp.zeros_like(delta_v)
 
         # h_e_mtx = (h_e_mtx.unsqueeze(-1) * combined_attention.unsqueeze(-2)).flatten(-2, -1)
-        h_e = self.aggregate(h_e_att, mask=mask)
+        h_e = self.aggregate(h_e_att, edges)
         h = self.node_model(h, h_e, h_combinations)
 
         if self.update:
-            if edges is not None:
-                delta_v = self.v_mixing(delta_v.swapaxes(-1, -2)).swapaxes(-1, -2).sum(axis=(-2, -3))
-                delta_v = delta_v / (mask.sum(-1, keepdims=True) + 1e-10)
-            else:
-                delta_v = self.v_mixing(delta_v.swapaxes(-1, -2)).swapaxes(-1, -2).mean(axis=(-2, -3))
+            delta_v = self.v_mixing(delta_v.swapaxes(-1, -2)).swapaxes(-1, -2).sum(axis=(-2, -3))
+            delta_v = delta_v / (mask.sum(-1, keepdims=True) + 1e-10)
 
 
             if v is not None:
@@ -486,14 +427,12 @@ class EquivariantGraphConvolutionalLayer(nn.Module):
                 ],
             )
 
-    def aggregate(self, h_e_mtx, mask=None):
+    def aggregate(self, h_e_mtx, edges):
         # h_e_mtx = self.mask_self(h_e_mtx)
-        if mask is not None:
-            h_e_mtx = h_e_mtx * jnp.expand_dims(mask, -1)
         if self.sigmoid:
             h_e_weights = self.edge_model(h_e_mtx)
             h_e_mtx = h_e_weights * h_e_mtx
-        h_e = h_e_mtx.sum(axis=-2)
+        h_e = segment_sum(h_e_mtx, edges[:,1]
         return h_e
 
     def node_model(self, h, h_e):
@@ -614,7 +553,7 @@ class EquivariantGraphConvolutionalLayerWithSmearing(nn.Module):
         x_minus_xt_norm = get_x_minus_xt_norm(x_minus_xt=x_minus_xt)
         h_cat_ht = get_h_cat_ht(h)
         h_e_mtx = self.edge_model(h_cat_ht, x_minus_xt_norm)
-        h_e = self.aggregate(h_e_mtx, mask=mask)
+        h_e = self.aggregate(h_e_mtx, edges)
         shift = self.shifting_mlp(h_e_mtx).sum(-2)
         scale = self.scaling_mlp(h)
 
