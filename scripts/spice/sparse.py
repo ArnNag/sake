@@ -93,6 +93,12 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
             # i, x, m, y = jnp.squeeze(i), jnp.squeeze(x), jnp.squeeze(m), jnp.squeeze(y)
             #
             i, x, edges, f, y, graph_segments = loader.get_batch(idx)  
+            print("i type:", i.dtype)
+            print("x type:", x.dtype)
+            print("edges type:", edges.dtype)
+            print("f type:", f.dtype)
+            print("y type:", y.dtype)
+            print("graph_segments type:", graph_segments.dtype)
             state = step_with_loss(state, i, x, edges, f, y)
             return state
 
