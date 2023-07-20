@@ -4,7 +4,7 @@ import optax
 from flax import linen as nn
 import numpy as onp
 import sake
-from jax_tqdm import loop_tqdm
+import tqdm
 from utils import ELEMENT_MAP, NUM_ELEMENTS, select
 
 def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, subset=None):
@@ -87,11 +87,7 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
     def epoch(state, i_tr, x_tr, edges_tr, f_tr, y_tr):
         loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=state.step, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs, num_elements=NUM_ELEMENTS)
 
-        @loop_tqdm(len(loader))
-        def loop_body(idx, state):
-            # i, x, m, y = next(iterator)
-            # i, x, m, y = jnp.squeeze(i), jnp.squeeze(x), jnp.squeeze(m), jnp.squeeze(y)
-            #
+        for idx in tqdm.tqdm(range(len(loader))):
             i, x, edges, f, y, graph_segments = loader.get_batch(idx)  
             print("i type:", i.dtype)
             print("x type:", x.dtype)
@@ -100,10 +96,6 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
             print("y type:", y.dtype)
             print("graph_segments type:", graph_segments.dtype)
             state = step_with_loss(state, i, x, edges, f, y)
-            return state
-
-        for idx in range(len(loader)):
-            state = loop_body(idx, state)
 
         return state
 

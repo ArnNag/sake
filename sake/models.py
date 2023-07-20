@@ -69,10 +69,10 @@ class DenseSAKEModel(SAKEModel):
 class SparseSAKEModel(SAKEModel):
     layer_type: type[SAKELayer]=SparseSAKELayer
 
-    def __call__(self, h, x, v=None, edges=None, he=None):
+    def __call__(self, h, x, v=None, edges=None, he=None, max_nodes=None):
         h = self.embedding_in(h)
         for layer in self.layers:
-            h, x, v = layer(h, x, v, edges=edges, he=he)
+            h, x, v = layer(h, x, v, edges=edges, he=he, max_nodes=max_nodes)
         h = self.embedding_out(h)
         return h, x, v
 
