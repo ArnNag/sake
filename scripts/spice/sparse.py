@@ -212,7 +212,7 @@ class SPICEBatchLoader:
                 data_fill = graph_data[:graph_num_data]
                 if offsets is not None:
                     data_fill += offsets[i]
-                flattened_data.at[data_flattened:next_data_idx].set(graph_data[:graph_num_data])
+                flattened_data = flattened_data.at[data_flattened:next_data_idx].set(graph_data[:graph_num_data])
 
                 data_flattened = next_data_idx
             return flattened_data
@@ -240,5 +240,4 @@ class SPICEBatchLoader:
 
 if __name__ == "__main__":
     import sys
-    print("edges_batch:"
     run(sys.argv[1], e_loss_factor=float(sys.argv[2]), subset=int(sys.argv[3]))
