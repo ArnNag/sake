@@ -204,6 +204,7 @@ class SPICEBatchLoader:
         batch_num_edges = self.num_edges_tr[batch_idxs]
 
         def flatten_data(batch_data, batch_num_data, max_num_data, fill_value, offsets):
+            breakpoint()
             flattened_data = jnp.full((max_num_data, *batch_data.shape[2:]), fill_value, dtype=batch_data.dtype)
             data_flattened = 0
             for i, (graph_data, graph_num_data) in enumerate(zip(batch_data, batch_num_data)):
@@ -239,4 +240,5 @@ class SPICEBatchLoader:
 
 if __name__ == "__main__":
     import sys
+    print("edges_batch:"
     run(sys.argv[1], e_loss_factor=float(sys.argv[2]), subset=int(sys.argv[3]))
