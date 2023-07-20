@@ -96,7 +96,8 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
             state = step_with_loss(state, i, x, edges, f, y)
             return state
 
-        state = jax.lax.fori_loop(0, len(loader), loop_body, state)
+        for idx in range(len(loader)):
+            state = loop_body(idx, state)
 
         return state
 
