@@ -141,6 +141,7 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
         print("before epoch")
         state = epoch(state, i_tr, x_tr, edges_tr, f_tr, y_tr)
         print("after epoch")
+        print(state.opt_state.notfinite_count)
         assert state.opt_state.notfinite_count <= 10
         save_checkpoint(f"_{prefix}eloss_{e_loss_factor:.0e}_subset_{subset}", target=state, keep_every_n_steps=10, step=idx_batch)
 
