@@ -190,10 +190,10 @@ class SPICEBatchLoader:
             batch_list.append(batch_idxs)
             batch_graph_segments.extend([-1] * (self.max_nodes - len(batch_graph_segments)))
             graph_segment_list.append(batch_graph_segments)
-        print("num_nodes_tr:", self.num_nodes_tr)
-        print("num_edges_tr:", self.num_edges_tr)
-        print("batch_list:", batch_list)
-        print("graph_segment_list:", graph_segment_list)
+        # print("num_nodes_tr:", self.num_nodes_tr)
+        # print("num_edges_tr:", self.num_edges_tr)
+        # print("batch_list:", batch_list)
+        # print("graph_segment_list:", graph_segment_list)
         return batch_list, jnp.array(graph_segment_list)
 
 
@@ -225,17 +225,16 @@ class SPICEBatchLoader:
         i_nums = flatten_nodes(self.i_tr[batch_idxs])
         i_batch = jax.nn.one_hot(i_nums, self.num_elements) 
         x_batch = flatten_nodes(self.x_tr[batch_idxs])
-        print("x_tr type:", self.x_tr.dtype)
-        print("x_tr[batch_idxs] type:", self.x_tr[batch_idxs].dtype)
-        print("x_batch type:", x_batch.dtype)
         edges_batch = flatten_edges(self.edges_tr[batch_idxs])
         f_batch = flatten_nodes(self.f_tr[batch_idxs])
         y_batch = jnp.expand_dims(jnp.pad(self.y_tr[batch_idxs], (0, self.max_graphs - len(batch_idxs))), -1)
         print("i_batch shape:", i_batch.shape)
         print("x_batch shape:", x_batch.shape)
         print("edges_batch shape:", edges_batch.shape)
+        print("edges_batch:", edges_batch)
         print("f_batch shape:", f_batch.shape)
         print("y_batch shape:", y_batch.shape)
+        print("batch_graph_segments shape:", batch_graph_segments.shape)
         return i_batch, x_batch, edges_batch, f_batch, y_batch, batch_graph_segments
 
 if __name__ == "__main__":
