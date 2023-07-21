@@ -49,9 +49,10 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
                 ],
             )
 
-        def __call__(self, i, x, edges):
-            y = self.model(i, x, edges=edges)[0]
-            y = y.sum(-2)
+        def __call__(self, i, x, edges, graph_segments):
+            h = self.model(i, x, edges=edges)[0]
+            print("h", h.shape)
+            y = jax.ops.segment_sum(h, graph_segments, num_segments=max_graphs)
             y = self.mlp(y)
             return y
 
@@ -59,28 +60,33 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
 
 
     @jax.jit
-    def get_e_pred(params, i, x, edges):
-        e_pred = model.apply(params, i, x, edges)
+    def get_e_pred(params, i, x, edges, graph_segments):
+        e_pred = model.apply(params, i, x, edges, graph_segments)
         e_pred = coloring(e_pred)
         return e_pred
 
-    def get_e_pred_sum(params, i, x, edges):
-        e_pred = get_e_pred(params, i, x, edges)
+    def get_e_pred_sum(params, i, x, edges, graph_segments):
+        e_pred = get_e_pred(params, i, x, edges, graph_segments)
         return -e_pred.sum()
 
     get_f_pred = jax.jit(jax.grad(get_e_pred_sum, argnums=2))
 
-    def loss_fn(params, i, x, edges, f, y):
-        e_pred = get_e_pred(params, i, x, edges)
-        f_pred = get_f_pred(params, i, x, edges)
+    def loss_fn(params, i, x, edges, f, y, graph_segments):
+        real_nodes = jnp.array(jnp.not_equal(graph_segments, -1), dtype=int)
+        e_mask = jax.ops.segment_sum(real_nodes, graph_segments, num_segments=max_graphs) != 0
+        f_mask = jnp.expand_dims(real_nodes, -1)
+        jax.debug.print("e_mask {}", e_mask.shape)
+        jax.debug.print("f_mask {}", f_mask.shape)
+        e_pred = get_e_pred(params, i, x, edges, graph_segments) * e_mask
+        f_pred = get_f_pred(params, i, x, edges, graph_segments) * f_mask
         e_loss = jnp.abs(e_pred - y).mean()
         f_loss = jnp.abs(f_pred - f).mean()
         return f_loss + e_loss * e_loss_factor
 
     @jax.jit
-    def step_with_loss(state, i, x, edges, f, y):
+    def step_with_loss(state, i, x, edges, f, y, graph_segments):
         params = state.params
-        grads = jax.grad(loss_fn)(params, i, x, edges, f, y)
+        grads = jax.grad(loss_fn)(params, i, x, edges, f, y, graph_segments)
         state = state.apply_gradients(grads=grads)
         return state
     
@@ -89,21 +95,15 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
 
         for idx in tqdm.tqdm(range(len(loader))):
             i, x, edges, f, y, graph_segments = loader.get_batch(idx)  
-            print("i type:", i.dtype)
-            print("x type:", x.dtype)
-            print("edges type:", edges.dtype)
-            print("f type:", f.dtype)
-            print("y type:", y.dtype)
-            print("graph_segments type:", graph_segments.dtype)
-            state = step_with_loss(state, i, x, edges, f, y)
+            state = step_with_loss(state, i, x, edges, f, y, graph_segments)
 
         return state
 
     init_loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=2666, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs, num_elements=NUM_ELEMENTS)
-    i0, x0, edges0 = init_loader.get_batch(0)[:3]
+    i0, x0, edges0, _, __, graph_segments0 = init_loader.get_batch(0)
 
     key = jax.random.PRNGKey(2666)
-    params = model.init(key, i0, x0, edges0)
+    params = model.init(key, i0, x0, edges0, graph_segments0)
 
     scheduler = optax.warmup_cosine_decay_schedule(
         init_value=1e-6,
