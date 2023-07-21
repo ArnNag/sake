@@ -75,8 +75,8 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
         real_nodes = jnp.array(jnp.not_equal(graph_segments, -1), dtype=int)
         e_mask = jax.ops.segment_sum(real_nodes, graph_segments, num_segments=max_graphs) != 0
         f_mask = jnp.expand_dims(real_nodes, -1)
-        jax.debug.print("e_mask {}", e_mask.shape)
-        jax.debug.print("f_mask {}", f_mask.shape)
+        jax.debug.print("e_mask {}", e_mask)
+        jax.debug.print("f_mask {}", f_mask)
         e_pred = get_e_pred(params, i, x, edges, graph_segments) * e_mask
         f_pred = get_f_pred(params, i, x, edges, graph_segments) * f_mask
         e_loss = jnp.abs(e_pred - y).mean()
