@@ -321,9 +321,9 @@ class SparseSAKELayer(SAKELayer):
             v=None,
             edges=None,
             he=None,
-            max_nodes=None,
         ):
 
+        max_nodes = h.shape[-2]
         # x_minus_xt shape: (n_edges, 3)
         x_minus_xt = get_x_minus_xt_sparse(x, edges)
         # x_minus_xt norm shape: (n_edges, 1)

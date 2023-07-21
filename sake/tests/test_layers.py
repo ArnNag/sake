@@ -46,9 +46,9 @@ def test_sparse_sake_layer():
     h = jax.random.uniform(key=jax.random.PRNGKey(1984), shape=(max_nodes, 16))
     edges = jnp.argwhere(jnp.logical_not(jnp.identity(max_nodes)))
     init_params_dense = dense_model.init(jax.random.PRNGKey(2046), h, x)
-    init_params_sparse = sparse_model.init(jax.random.PRNGKey(2046), h, x, edges=edges, max_nodes=max_nodes)
+    init_params_sparse = sparse_model.init(jax.random.PRNGKey(2046), h, x, edges=edges)
     h_dense, x_dense, v_dense = dense_model.apply(init_params_dense, h, x)
-    h_sparse, x_sparse, v_sparse = sparse_model.apply(init_params_sparse, h, x, edges=edges, max_nodes=max_nodes)
+    h_sparse, x_sparse, v_sparse = sparse_model.apply(init_params_sparse, h, x, edges=edges)
 
     assert h_sparse.shape == (max_nodes, 16)
     assert x_sparse.shape == (max_nodes, 3)
