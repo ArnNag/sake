@@ -328,7 +328,7 @@ class SparseSAKELayer(SAKELayer):
         x_minus_xt = get_x_minus_xt_sparse(x, edges)
         # x_minus_xt norm shape: (n_edges, 1)
         x_minus_xt_norm = get_x_minus_xt_norm(x_minus_xt=x_minus_xt)
-        # h_cat_ht shape: (n_edges, hidden_features * 2 [sender + receiver]) 
+        # h_cat_ht shape: (n_edges, hidden_features * 2 [concatenated sender and receiver]) 
         h_cat_ht = get_h_cat_ht_sparse(h, edges)
 
         if he is not None:
