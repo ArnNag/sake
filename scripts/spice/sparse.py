@@ -51,7 +51,6 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
 
         def __call__(self, i, x, edges, graph_segments):
             h = self.model(i, x, edges=edges)[0]
-            print("h", h.shape)
             y = jax.ops.segment_sum(h, graph_segments, num_segments=max_graphs)
             y = self.mlp(y)
             return y
@@ -75,8 +74,6 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
         real_nodes = jnp.array(jnp.not_equal(graph_segments, -1), dtype=int)
         e_mask = jax.ops.segment_sum(real_nodes, graph_segments, num_segments=max_graphs) != 0
         f_mask = jnp.expand_dims(real_nodes, -1)
-        jax.debug.print("e_mask {}", e_mask)
-        jax.debug.print("f_mask {}", f_mask)
         e_pred = get_e_pred(params, i, x, edges, graph_segments) * e_mask
         f_pred = get_f_pred(params, i, x, edges, graph_segments) * f_mask
         e_loss = jnp.abs(e_pred - y).mean()
@@ -220,13 +217,6 @@ class SPICEBatchLoader:
         edges_batch = flatten_edges(self.edges_tr[batch_idxs])
         f_batch = flatten_nodes(self.f_tr[batch_idxs])
         y_batch = jnp.expand_dims(jnp.pad(self.y_tr[batch_idxs], (0, self.max_graphs - len(batch_idxs))), -1)
-        print("i_batch shape:", i_batch.shape)
-        print("x_batch shape:", x_batch.shape)
-        print("edges_batch shape:", edges_batch.shape)
-        print("edges_batch:", edges_batch)
-        print("f_batch shape:", f_batch.shape)
-        print("y_batch shape:", y_batch.shape)
-        print("batch_graph_segments shape:", batch_graph_segments.shape)
         return i_batch, x_batch, edges_batch, f_batch, y_batch, batch_graph_segments
 
 if __name__ == "__main__":
