@@ -72,7 +72,10 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
 
     def loss_fn(params, i, x, edges, f, y, graph_segments):
         real_nodes = jnp.array(jnp.not_equal(graph_segments, -1), dtype=int)
+        jax.debug.print("Num real nodes: {}", jnp.sum(real_nodes))
         e_mask = jax.ops.segment_sum(real_nodes, graph_segments, num_segments=max_graphs) != 0
+        jax.debug.print("Num real graphs: {}", jnp.sum(e_mask))
+        jax.debug.print("Num real edge: {}", jnp.sum(edges[:,1] != -1))
         f_mask = jnp.expand_dims(real_nodes, -1)
         e_pred = get_e_pred(params, i, x, edges, graph_segments) * e_mask
         f_pred = get_f_pred(params, i, x, edges, graph_segments) * f_mask
@@ -132,7 +135,7 @@ def run(prefix, max_nodes=997, max_edges=14983, max_graphs=53, e_loss_factor=0, 
         print("after epoch")
         print(state.opt_state.notfinite_count)
         assert state.opt_state.notfinite_count <= 10
-        save_checkpoint(f"_{prefix}eloss_{e_loss_factor:.0e}_subset_{subset}", target=state, keep_every_n_steps=10, step=idx_batch)
+        save_checkpoint(f"_sparse_{prefix}eloss_{e_loss_factor:.0e}_subset_{subset}", target=state, keep_every_n_steps=10, step=idx_batch)
 
 '''
 Initialize for every epoch with a unique seed.
