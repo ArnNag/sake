@@ -212,7 +212,7 @@ class SPICEBatchLoader:
             return flatten_data(batch_data, batch_num_nodes, self.max_nodes, 0, None)
 
         def flatten_edges(batch_data):
-            return flatten_data(batch_data, batch_num_edges, self.max_edges, -1, jnp.cumsum(jnp.concat([jnp.array([0]), batch_num_nodes[:-1]])))
+            return flatten_data(batch_data, batch_num_edges, self.max_edges, -1, jnp.cumsum(jnp.concatenate([jnp.array([0]), batch_num_nodes[:-1]])))
 
         i_nums = flatten_nodes(self.i_tr[batch_idxs])
         i_batch = jax.nn.one_hot(i_nums, self.num_elements) 
