@@ -176,7 +176,7 @@ class SPICEBatchLoader:
                 batch_edges_added += self.num_edges_tr[tr_idx]
                 if len(batch_idxs) >= self.max_graphs or batch_nodes_added >= self.max_nodes or batch_edges_added >= self.max_edges:
                     break
-                batch_graph_segments.extend([len(batch_idxs)] * self.num_nodes_tr[tr_idx])
+                batch_graph_segments.extend([len(batch_idxs)] * self.num_nodes_tr[tr_idx].item())
                 batch_idxs.append(tr_idx)
                 total_graphs_added += 1
             batch_list.append(batch_idxs)
