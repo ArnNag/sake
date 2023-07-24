@@ -202,8 +202,8 @@ class SPICEBatchLoader:
                 next_data_idx = data_flattened + graph_num_data
                 data_fill = graph_data[:graph_num_data]
                 if offsets is not None:
-                    data_fill += offsets[i]
-                flattened_data = flattened_data.at[data_flattened:next_data_idx].set(graph_data[:graph_num_data])
+                    data_fill = data_fill + offsets[i]
+                flattened_data = flattened_data.at[data_flattened:next_data_idx].set(data_fill)
 
                 data_flattened = next_data_idx
             return flattened_data
@@ -212,7 +212,7 @@ class SPICEBatchLoader:
             return flatten_data(batch_data, batch_num_nodes, self.max_nodes, 0, None)
 
         def flatten_edges(batch_data):
-            return flatten_data(batch_data, batch_num_edges, self.max_edges, -1, jnp.cumsum([0] + batch_num_nodes[:-1]))
+            return flatten_data(batch_data, batch_num_edges, self.max_edges, -1, jnp.cumsum(jnp.concat([jnp.array([0]), batch_num_nodes[:-1]])))
 
         i_nums = flatten_nodes(self.i_tr[batch_idxs])
         i_batch = jax.nn.one_hot(i_nums, self.num_elements) 
