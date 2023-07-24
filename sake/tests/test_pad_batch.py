@@ -40,8 +40,7 @@ def test_batch_pad():
     from sparse import SPICEBatchLoader
 
     num_elements = 17
-    x_features = 3
-    f_features = 3
+    geom_features = 3
     y_features = 1
     num_graphs_tr = 997
     num_nodes_tr = 7
@@ -61,10 +60,10 @@ def test_batch_pad():
     for i, (num_nodes, num_edges) in enumerate(zip(nodes_per_graph, edges_per_graph)):
         key = jax.random.PRNGKey(i)
         i = jnp.pad(jax.random.randint(key, shape=(num_nodes,), minval=0, maxval=num_elements-1), ((0, num_nodes_tr - num_nodes)))
-        x = jnp.pad(jax.random.uniform(key, shape=(num_nodes, x_features)), ((0, num_nodes_tr - num_nodes), (0, 0)))
+        x = jnp.pad(jax.random.uniform(key, shape=(num_nodes, geom_features)), ((0, num_nodes_tr - num_nodes), (0, 0)))
         all_edges = jnp.argwhere(jnp.logical_not(jnp.identity(num_nodes))) 
         edges = jnp.pad(all_edges[jax.random.permutation(key, num_edges_tr)[:num_edges]], ((0, num_edges_tr - num_edges), (0, 0)), mode='constant', constant_values=-1)
-        f = jnp.pad(jax.random.uniform(key, shape=(num_nodes, f_features)), ((0, num_nodes_tr - num_nodes), (0, 0)))
+        f = jnp.pad(jax.random.uniform(key, shape=(num_nodes, geom_features)), ((0, num_nodes_tr - num_nodes), (0, 0)))
         y = jnp.pad(jax.random.uniform(key, shape=(num_nodes, y_features)), ((0, num_nodes_tr - num_nodes), (0, 0)))
         i_tr.append(i)
         x_tr.append(x)
@@ -77,9 +76,9 @@ def test_batch_pad():
     f_tr = jnp.array(f_tr)
     y_tr = jnp.array(y_tr)
     assert(i_tr.shape == (num_graphs_tr, num_nodes_tr))
-    assert(x_tr.shape == (num_graphs_tr, num_nodes_tr, x_features))
+    assert(x_tr.shape == (num_graphs_tr, num_nodes_tr, geom_features))
     assert(edges_tr.shape == (num_graphs_tr, num_edges_tr, 2))
-    assert(f_tr.shape == (num_graphs_tr, num_nodes_tr, f_features))
+    assert(f_tr.shape == (num_graphs_tr, num_nodes_tr, geom_features))
     assert(y_tr.shape == (num_graphs_tr, num_nodes_tr, y_features))
             
     print("nodes_per_graph", nodes_per_graph)
