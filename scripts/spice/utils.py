@@ -136,7 +136,6 @@ class SPICEBatchLoader:
 @partial(jax.jit, static_argnums=(0,))
 def get_e_pred(model, params, i, x, edges, graph_segments):
     e_pred = model.apply(params, i, x, edges, graph_segments)
-    e_pred = coloring(e_pred)
     return e_pred
 
 @partial(jax.jit, static_argnums=(0,))
@@ -165,10 +164,15 @@ class SparseSAKEEnergyModel(nn.Module):
             ],
         )
 
+        self.mean = self.variable("coloring", "mean", lambda: 0.)
+        self.std = self.variable("coloring", "std", lambda: 1.)
+        self.coloring = lambda y: self.std.value * y + self.mean.value
+
     def __call__(self, i, x, edges, graph_segments):
         h = self.model(i, x, edges=edges)[0]
         y = jax.ops.segment_sum(h, graph_segments, self.num_segments)
         y = self.mlp(y)
+        y = self.coloring(y)
         return y
 
 def loss_fn(model, params, i, x, edges, f, y, graph_segments, e_loss_factor):

@@ -2,13 +2,15 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax import linen as nn
+import flax
 import numpy as onp
 import sake
 import tqdm
 from functools import partial
 from utils import ELEMENT_MAP, NUM_ELEMENTS, select, SPICEBatchLoader, get_e_pred, get_f_pred, SparseSAKEEnergyModel, loss_fn
+from functools import partial
 
-def run(prefix, max_nodes=7000, max_edges=120000, max_graphs=300, e_loss_factor=0, subset=None):
+def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0, subset=None):
     ds_tr = onp.load(prefix + "spice_train.npz")
     i_tr = ELEMENT_MAP[ds_tr["atomic_numbers"]]
     x_tr = ds_tr["pos"]
@@ -29,16 +31,13 @@ def run(prefix, max_nodes=7000, max_edges=120000, max_graphs=300, e_loss_factor=
             locals()["%s_%s" % (_var, _split)] = jnp.array(locals()["%s_%s" % (_var, _split)])
 
 
-    from sake.utils import coloring
-    from functools import partial
-    coloring = partial(coloring, mean=y_tr.mean(), std=y_tr.std())
 
     model = SparseSAKEEnergyModel(num_segments=max_graphs)
 
     @partial(jax.jit, static_argnums=(0,))
     def step_with_loss(model, state, i, x, edges, f, y, graph_segments):
-        params = state.params
-        grads = jax.grad(loss_fn, argnums=1)(model, params, i, x, edges, f, y, graph_segments, e_loss_factor)
+        variables = state.params
+        grads = jax.grad(loss_fn, argnums=1)(model, variables, i, x, edges, f, y, graph_segments, e_loss_factor)
         state = state.apply_gradients(grads=grads)
         return state
     
@@ -55,7 +54,8 @@ def run(prefix, max_nodes=7000, max_edges=120000, max_graphs=300, e_loss_factor=
     i0, x0, edges0, _, __, graph_segments0 = init_loader.get_batch(0)
 
     key = jax.random.PRNGKey(2666)
-    params = model.init(key, i0, x0, edges0, graph_segments0)
+    variables = model.init(key, i0, x0, edges0, graph_segments0)
+    variables = variables.copy({'coloring': {'mean': y_tr.mean(), 'std': y_tr.std()}})
 
     scheduler = optax.warmup_cosine_decay_schedule(
         init_value=1e-6,
@@ -72,11 +72,15 @@ def run(prefix, max_nodes=7000, max_edges=120000, max_graphs=300, e_loss_factor=
 
     optimizer = optax.apply_if_finite(optimizer, 5)
 
+    partition_optimizers = {'trainable': optimizer, 'frozen': optax.set_to_zero()}
+    param_partitions = flax.core.freeze(flax.traverse_util.path_aware_map(
+      lambda path, v: 'frozen' if 'coloring' in path else 'trainable', variables))
+    masked_optimizer = optax.multi_transform(partition_optimizers, param_partitions)
 
     from flax.training.train_state import TrainState
     from flax.training.checkpoints import save_checkpoint
     state = TrainState.create(
-        apply_fn=model.apply, params=params, tx=optimizer,
+        apply_fn=model.apply, params=variables, tx=masked_optimizer
     )
 
 

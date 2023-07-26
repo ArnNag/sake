@@ -9,25 +9,28 @@ import optax
 
 class DenseWithBias(nn.Module):
     out_features: int
-    offset: int
 
     def setup(self):
         self.dense = nn.Dense(self.out_features)
-        self.offset_var = self.variable("coloring", "offset", lambda: self.offset)
-        jax.lax.stop_gradient(self.offset_var.value)
+        self.mean = self.variable("coloring", "mean", lambda: 0.)
+        self.std = self.variable("coloring", "std", lambda: 1.)
+
+    def coloring(self, x):
+        return self.std * x + self.mean
 
     def __call__(self, x):
         x = self.dense(x)
-        return x + self.offset_var.value
+        x = self.coloring(x)
+        return x
 
 
 key = jax.random.PRNGKey(0)
 x = jax.random.normal(key, (10,))
-model = DenseWithBias(10, 1.)
+model = DenseWithBias(10)
 variables = model.init(key, x)
 coloring = variables['coloring']
 params = variables['params']
-new_var = variables.copy({'coloring': {'offset': 2.0}})
+new_var = variables.copy({'coloring': {'mean': 2.0, 'std': 3.0}})
 print(new_var['coloring'])
 resultone = model.apply(variables, x)
 resulttwo = model.apply(new_var, x)
@@ -41,8 +44,10 @@ param_partitions = flax.core.freeze(traverse_util.path_aware_map(
   lambda path, v: 'frozen' if 'coloring' in path else 'trainable', variables))
 optimizer = optax.multi_transform(partition_optimizers, param_partitions)
 state = TrainState.create(
-    apply_fn=model.apply, params=variables, tx=optimizer,
+    apply_fn=model.apply, params=new_var, tx=optimizer,
 )
+
+print(state.opt_state)
 
 def loss_fn(variables, x):
     return jax.numpy.sum(model.apply(variables, x))

@@ -58,7 +58,7 @@ class SPICESerializer:
             padded_atom_nums = np.pad(atom_nums, (0, pad_num))
             padded_pos = np.pad(pos_arr, ((0, 0), (0, pad_num), (0, 0)))
             padded_grads = np.pad(grads_arr, ((0, 0), (0, pad_num), (0, 0)))
-            edges, num_edges = batch_radius_graph(pos_arr, self.dist_cutoff, self.max_edges)
+            edges, num_edges = self.batch_radius_graph(pos_arr, self.dist_cutoff, self.max_edges)
             all_atom_nums.append([padded_atom_nums for conf in range(len(pos_arr))])
             all_subsets.append([self.SUBSET_MAP[self.data[name]['subset'][0]] for conf in range(len(pos_arr))])
             all_names.append([name for conf in range(len(pos_arr))])
@@ -72,6 +72,40 @@ class SPICESerializer:
         print(all_num_nodes)
         print(all_num_edges)
         np.savez(out_path, atomic_numbers=np.concatenate(all_atom_nums), formation_energy=np.concatenate(all_form_energies), forces=-np.concatenate(all_grads), pos=np.concatenate(all_pos), names=np.concatenate(all_names), subsets=np.concatenate(all_subsets), edges=np.concatenate(all_edges), num_nodes=np.concatenate(all_num_nodes), num_edges=np.concatenate(all_num_edges))
+
+    @staticmethod
+    def batch_radius_graph(batch_pos, L, max_edges):
+        """
+        Batched geometry (batch_size, n_atoms, 3) -> indices of edges within L (batch_size, n_edges, 2), number of edges within L (batch_size, )
+        """
+        def _distance_matrix(pos):
+            """
+            Geometry (n_atoms, 3) -> pairwise distances (n_atoms, n_atoms)
+            Batched geometry (batch_size, n_atoms, 3) -> pairwise distances (batch_size, n_atoms, n_atoms)
+            """
+            assert(len(pos.shape) == 2 or len(pos.shape) == 3)
+            return onp.linalg.norm(onp.expand_dims(pos, -2) - onp.expand_dims(pos, -3), axis=-1)
+
+        def _radius_graph(pos, L):
+            """
+            Geometry (n_atoms, 3) -> indices of edges within L (n_edges, 2)
+            """
+            assert(len(pos.shape) == 2)
+            return onp.argwhere((_distance_matrix(pos) < L) & ~onp.identity(pos.shape[-2], dtype=bool))
+
+        assert(len(batch_pos.shape) == 3)
+        all_edges = []    
+        all_num_edges = []
+        for i, pos in enumerate(batch_pos):
+            edges = _radius_graph(pos, L)
+            num_edges = len(edges)
+            pad_len = max_edges - num_edges
+            if pad_len < 0:
+                print(f"Skipping {i}")
+                continue
+            all_edges.append(onp.pad(edges, ((0, pad_len), (0, 0)), mode="constant", constant_values=-1))
+            all_num_edges.append(num_edges)
+        return onp.array(all_edges, dtype=onp.int32), onp.array(all_num_edges, dtype=onp.int16)
 
 if __name__ == "__main__": 
 	spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', sys.argv[1], train_ratio=float(sys.argv[2]), test_ratio=float(sys.argv[3]), max_atoms=int(sys.argv[4]))
