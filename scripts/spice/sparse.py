@@ -89,7 +89,7 @@ def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0
         print("before epoch")
         state = epoch(model, state, i_tr, x_tr, edges_tr, f_tr, y_tr)
         print("after epoch")
-        print("state.opt_state.notfinite_count:", state.opt_state.notfinite_count)
+        print("notfinite_count:", state.opt_state.inner_states["trainable"].inner_state.notfinite_count)
         # assert state.opt_state.notfinite_count <= 10
         save_checkpoint(f"_sparse_{prefix}eloss_{e_loss_factor:.0e}_subset_{subset}", target=state, keep_every_n_steps=10, step=epoch_num)
 

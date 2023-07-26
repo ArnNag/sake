@@ -16,7 +16,7 @@ class DenseWithBias(nn.Module):
         self.std = self.variable("coloring", "std", lambda: 1.)
 
     def coloring(self, x):
-        return self.std * x + self.mean
+        return self.std.value * x + self.mean.value
 
     def __call__(self, x):
         x = self.dense(x)
@@ -39,7 +39,8 @@ print(resulttwo)
 
 
 
-partition_optimizers = {'trainable': optax.adam(5e-3), 'frozen': optax.set_to_zero()}
+real_optimizer = optax.apply_if_finite(optax.adam(5e-3), 5)
+partition_optimizers = {'trainable': real_optimizer, 'frozen': optax.set_to_zero()}
 param_partitions = flax.core.freeze(traverse_util.path_aware_map(
   lambda path, v: 'frozen' if 'coloring' in path else 'trainable', variables))
 optimizer = optax.multi_transform(partition_optimizers, param_partitions)
@@ -47,7 +48,8 @@ state = TrainState.create(
     apply_fn=model.apply, params=new_var, tx=optimizer,
 )
 
-print(state.opt_state)
+
+print("opt:" , state.opt_state.inner_states["trainable"].inner_state.notfinite_count)
 
 def loss_fn(variables, x):
     return jax.numpy.sum(model.apply(variables, x))
