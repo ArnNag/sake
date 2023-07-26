@@ -10,43 +10,23 @@ ELEMENT_MAP = onp.array([ 0,  1, -99,  2, -99, -99,  3,  4,  5,  6, -99,  7,  8,
 
 NUM_ELEMENTS = 16
 
+def load_data(path, subset=-1):
+    ds = onp.load(path)
+    i = ELEMENT_MAP[ds["atomic_numbers"]]
+    x = ds["pos"]
+    f = ds["forces"]
+    y = ds["formation_energy"]
+    edges = ds["edges"]
+    num_nodes = ds["num_nodes"]
+    num_edges = ds["num_edges"]
+    subset_labels = ds["subsets"]
+    if subset >= 0:
+        i, x, f, y, edges, num_nodes, num_edges = select(subset_labels, subset, i, x, f, y, edges, num_nodes, num_edges)
+    return i, x, f, y, edges, num_nodes, num_edges
+
 def select(subset_labels, subset, *fields):
     selection = (subset_labels == subset)
     return (field[selection] for field in fields)
-
-def distance_matrix(pos):
-    """
-    Geometry (n_atoms, 3) -> pairwise distances (n_atoms, n_atoms)
-    Batched geometry (batch_size, n_atoms, 3) -> pairwise distances (batch_size, n_atoms, n_atoms)
-    """
-    assert(len(pos.shape) == 2 or len(pos.shape) == 3)
-    return onp.linalg.norm(onp.expand_dims(pos, -2) - onp.expand_dims(pos, -3), axis=-1)
-
-
-def radius_graph(pos, L):
-    """
-    Geometry (n_atoms, 3) -> indices of edges within L (n_edges, 2)
-    """
-    assert(len(pos.shape) == 2)
-    return onp.argwhere((distance_matrix(pos) < L) & ~onp.identity(pos.shape[-2], dtype=bool))
-
-def batch_radius_graph(batch_pos, L, max_edges):
-    """
-    Batched geometry (batch_size, n_atoms, 3) -> indices of edges within L (batch_size, n_edges, 2), number of edges within L (batch_size, )
-    """
-    assert(len(batch_pos.shape) == 3)
-    all_edges = []    
-    all_num_edges = []
-    for i, pos in enumerate(batch_pos):
-        edges = radius_graph(pos, L)
-        num_edges = len(edges)
-        pad_len = max_edges - num_edges
-        if pad_len < 0:
-            print(f"Skipping {i}")
-            continue
-        all_edges.append(onp.pad(edges, ((0, pad_len), (0, 0)), mode="constant", constant_values=-1))
-        all_num_edges.append(num_edges)
-    return onp.array(all_edges, dtype=onp.int8), onp.array(all_num_edges, dtype=onp.int16)
 
 '''
 Initialize for every epoch with a unique seed.

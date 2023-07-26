@@ -1,12 +1,11 @@
 import h5py
 import jax
-import numpy as np
+import numpy as onp
 import time
 import json
 import os
 import sys
 import tqdm
-from utils import batch_radius_graph
 
 class SPICESerializer:
 
@@ -45,7 +44,7 @@ class SPICESerializer:
         all_num_nodes = []
         all_num_edges = []
         for name in tqdm.tqdm(names):
-            atom_nums = np.array(self.data[name]['atomic_numbers'], np.uint8)
+            atom_nums = onp.array(self.data[name]['atomic_numbers'], onp.uint8)
             if len(atom_nums) > self.max_atoms:
                 print("Skipping: ", name)
                 continue
@@ -55,9 +54,9 @@ class SPICESerializer:
             form_energy_arr = self.data[name]['formation_energy']
             num_nodes = len(atom_nums)
             pad_num = self.max_atoms - num_nodes
-            padded_atom_nums = np.pad(atom_nums, (0, pad_num))
-            padded_pos = np.pad(pos_arr, ((0, 0), (0, pad_num), (0, 0)))
-            padded_grads = np.pad(grads_arr, ((0, 0), (0, pad_num), (0, 0)))
+            padded_atom_nums = onp.pad(atom_nums, (0, pad_num))
+            padded_pos = onp.pad(pos_arr, ((0, 0), (0, pad_num), (0, 0)))
+            padded_grads = onp.pad(grads_arr, ((0, 0), (0, pad_num), (0, 0)))
             edges, num_edges = self.batch_radius_graph(pos_arr, self.dist_cutoff, self.max_edges)
             all_atom_nums.append([padded_atom_nums for conf in range(len(pos_arr))])
             all_subsets.append([self.SUBSET_MAP[self.data[name]['subset'][0]] for conf in range(len(pos_arr))])
@@ -71,7 +70,7 @@ class SPICESerializer:
             all_num_edges.append(num_edges)
         print(all_num_nodes)
         print(all_num_edges)
-        np.savez(out_path, atomic_numbers=np.concatenate(all_atom_nums), formation_energy=np.concatenate(all_form_energies), forces=-np.concatenate(all_grads), pos=np.concatenate(all_pos), names=np.concatenate(all_names), subsets=np.concatenate(all_subsets), edges=np.concatenate(all_edges), num_nodes=np.concatenate(all_num_nodes), num_edges=np.concatenate(all_num_edges))
+        onp.savez(out_path, atomic_numbers=np.concatenate(all_atom_nums), formation_energy=np.concatenate(all_form_energies), forces=-np.concatenate(all_grads), pos=np.concatenate(all_pos), names=np.concatenate(all_names), subsets=np.concatenate(all_subsets), edges=np.concatenate(all_edges), num_nodes=np.concatenate(all_num_nodes), num_edges=np.concatenate(all_num_edges))
 
     @staticmethod
     def batch_radius_graph(batch_pos, L, max_edges):

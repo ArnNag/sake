@@ -6,32 +6,16 @@ import flax
 import numpy as onp
 import sake
 import tqdm
-from functools import partial
-from utils import ELEMENT_MAP, NUM_ELEMENTS, select, SPICEBatchLoader, get_e_pred, get_f_pred, SparseSAKEEnergyModel, loss_fn
+from utils import load_data, NUM_ELEMENTS, SPICEBatchLoader, get_e_pred, get_f_pred, SparseSAKEEnergyModel, loss_fn
 from functools import partial
 
-def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0, subset=None):
-    ds_tr = onp.load(prefix + "spice_train.npz")
-    i_tr = ELEMENT_MAP[ds_tr["atomic_numbers"]]
-    x_tr = ds_tr["pos"]
-    f_tr = ds_tr["forces"]
-    y_tr = ds_tr["formation_energy"]
-    edges_tr = ds_tr["edges"]
-    num_nodes_tr = ds_tr["num_nodes"]
-    num_edges_tr = ds_tr["num_edges"]
-    subset_labels = ds_tr["subsets"]
-
-    if subset >= 0: 
-        i_tr, x_tr, f_tr, y_tr, edges_tr = select(subset_labels, subset, i_tr, x_tr, f_tr, y_tr, edges_tr)
-    
+def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0, subset=-1):
+    i_tr, x_tr, f_tr, y_tr, edges_tr, num_nodes_tr, num_edges_tr = load_data(prefix + "spice_train.npz", subset)
     print("loaded all data")
 
     for _var in ["i", "x", "y", "f"]:
         for _split in ["tr"]:
             locals()["%s_%s" % (_var, _split)] = jnp.array(locals()["%s_%s" % (_var, _split)])
-
-
-
     model = SparseSAKEEnergyModel(num_segments=max_graphs)
 
     @partial(jax.jit, static_argnums=(0,))
