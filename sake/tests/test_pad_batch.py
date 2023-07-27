@@ -193,4 +193,39 @@ def test_max_nodes_reached():
     assert jnp.allclose(graph_segments1, jnp.array([0., 0., 0., -1.]))
 
 
+def test_graph_order():
+    import jax
+    import jax.numpy as jnp
+    import sake
+    import sys
+    sys.path.append('../../scripts/spice')
+    from utils import SPICEBatchLoader, SparseSAKEEnergyModel , get_e_pred
+    key = jax.random.PRNGKey(0)
+    i_tr = jnp.array([[7, 11, 13, 0, 0], [4, 8, 0, 0, 0]])
+    num_graphs = i_tr.shape[0]
+    num_nodes = i_tr.shape[1]
+    x_tr = jax.random.uniform(key, shape=(num_graphs, num_nodes, 3))
+    f_tr = x_tr
+    edges_tr = jnp.array([[[0, 1], [1, 2], [-1, -1], [-1, -1], [-1, -1]], [[0, 1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]]])
+    num_nodes_tr = jnp.array([3, 2])
+    num_edges_tr = jnp.array([2, 1])
+    y_tr = jnp.array([20, 17])
+    max_edges = 4
+    max_nodes = 7
+    max_graphs = 3
+    num_elements = 13
+    loader0 = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=0, max_edges=max_edges, max_nodes=max_nodes, max_graphs=max_graphs, num_elements=num_elements)
+    loader1 = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=1, max_edges=max_edges, max_nodes=max_nodes, max_graphs=max_graphs, num_elements=num_elements)
+    i0, x0, edges0, f0, y0, graph_segments0 = loader0.get_batch(0)
+    i1, x1, edges1, f1, y1, graph_segments1 = loader1.get_batch(0)
+    model = SparseSAKEEnergyModel(num_segments=max_graphs)
+    variables = model.init(key, i0, x0, edges0, graph_segments0)
+    e_pred0 = get_e_pred(model, variables, i0, x0, edges0, graph_segments0) 
+    e_pred1 = get_e_pred(model, variables, i1, x1, edges1, graph_segments1)
+    assert(jnp.allclose(e_pred0[0], e_pred1[1]))
+    assert(jnp.allclose(e_pred0[1], e_pred1[0]))
+    
+
+
+
 
