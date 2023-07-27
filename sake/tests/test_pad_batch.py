@@ -156,5 +156,41 @@ def test_max_graphs_reached():
     assert jnp.allclose(graph_segments0, jnp.array([0., 0., -1., -1., -1., -1., -1.]))
     assert jnp.allclose(graph_segments1, jnp.array([0., 0., 0., -1., -1., -1., -1.]))
 
+def test_max_nodes_reached():
+    import jax
+    import jax.numpy as jnp
+    import sake
+    import sys
+    sys.path.append('../../scripts/spice')
+    from sparse import SPICEBatchLoader
+    i_tr = jnp.array([[7, 11, 13, 0, 0], [4, 8, 0, 0, 0]])
+    x_tr = i_tr
+    f_tr = i_tr
+    num_nodes_tr = jnp.array([3, 2])
+    edges_tr = jnp.array([[[0, 1], [1, 2], [-1, -1], [-1, -1], [-1, -1]], [[0, 1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]]])
+    num_edges_tr = jnp.array([2, 1])
+    y_tr = jnp.array([20, 17])
+    loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=1776, max_edges=5, max_nodes=4, max_graphs=3, num_elements=13)
+    i0, x0, edges0, f0, y0, graph_segments0 = loader.get_batch(0)
+    i1, x1, edges1, f1, y1, graph_segments1 = loader.get_batch(1)
+    assert jnp.allclose(i0, jnp.array([[0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.],
+       [1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]]))
+    assert jnp.allclose(i1, jnp.array([[0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]]))
+    assert jnp.allclose(x0, jnp.array([4., 8., 0., 0.]))
+    assert jnp.allclose(x1, jnp.array([7., 11., 13., 0.]))
+    assert jnp.allclose(edges0, jnp.array([[0., 1.], [-1., -1.], [-1., -1.], [-1., -1.], [-1., -1.]]))
+    assert jnp.allclose(edges1, jnp.array([[0., 1.], [1., 2.], [-1., -1.], [-1., -1.], [-1., -1.]]))
+    assert jnp.allclose(f0, jnp.array([4., 8., 0., 0.]))
+    assert jnp.allclose(f1, jnp.array([7., 11., 13., 0.]))
+    assert jnp.allclose(y0, jnp.array([[17.], [0.], [0.]]))
+    assert jnp.allclose(y1, jnp.array([[20.], [0.], [0.]]))
+    assert jnp.allclose(graph_segments0, jnp.array([0., 0., -1., -1.]))
+    assert jnp.allclose(graph_segments1, jnp.array([0., 0., 0., -1.]))
+
 
 
