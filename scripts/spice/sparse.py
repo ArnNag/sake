@@ -6,7 +6,7 @@ import flax
 import numpy as onp
 import sake
 import tqdm
-from utils import load_data, NUM_ELEMENTS, SPICEBatchLoader, SparseSAKEEnergyModel, energy_loss, force_loss
+from utils import load_data, NUM_ELEMENTS, SPICEBatchLoader, SparseSAKEEnergyModel, get_y_loss, get_f_loss
 from functools import partial
 
 def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0, subset=-1):
@@ -17,8 +17,8 @@ def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0
 
     @partial(jax.jit, static_argnums=(0,))
     def loss_fn(model, params, i, x, edges, f, y, graph_segments, e_loss_factor):
-        e_loss = energy_loss(model, params, i, x, edges, y, graph_segments)
-        f_loss = force_loss(model, params, i, x, edges, f, graph_segments)
+        e_loss = get_y_loss(model, params, i, x, edges, y, graph_segments)
+        f_loss = get_f_loss(model, params, i, x, edges, f, graph_segments)
         return f_loss + e_loss * e_loss_factor
 
     @partial(jax.jit, static_argnums=(0,))

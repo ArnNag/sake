@@ -157,7 +157,7 @@ get_f_pred = jax.jit(jax.grad(get_neg_e_pred_sum, argnums=3), static_argnums=(0,
 
 
 @partial(jax.jit, static_argnums=(0,))
-def energy_loss(model, params, i, x, edges, y, graph_segments):
+def get_y_loss(model, params, i, x, edges, y, graph_segments):
     e_mask = jax.ops.segment_sum(jnp.ones_like(graph_segments), graph_segments, num_segments=model.num_segments) > 0
     jnp.set_printoptions(threshold=10000)
     jax.debug.print("graph_segments: {}", graph_segments)
@@ -168,7 +168,7 @@ def energy_loss(model, params, i, x, edges, y, graph_segments):
     return e_loss
 
 @partial(jax.jit, static_argnums=(0,))
-def force_loss(model, params, i, x, edges, f, graph_segments):
+def get_f_loss(model, params, i, x, edges, f, graph_segments):
     f_mask = jnp.expand_dims(jnp.array(jnp.not_equal(graph_segments, -1), dtype=int), -1)
     jax.debug.print("Num real nodes: {}", jnp.sum(f_mask))
     jax.debug.print("Num real edge: {}", jnp.sum(edges[:,1] != -1))
