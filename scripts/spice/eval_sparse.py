@@ -7,12 +7,12 @@ import sake
 from functools import partial
 import tqdm
 import os
+import time
 from utils import load_data, NUM_ELEMENTS, SPICEBatchLoader, SparseSAKEEnergyModel, get_f_loss, get_y_loss
 
 
-def run(path, max_nodes=7200, max_edges=120000, max_graphs=400, train_subset=-1, val_subset=3):
-    prefix = path[path.find("sparse")+7:path.rfind("eloss")]
-    i_vl, x_vl, edges_vl, f_vl, y_vl, num_nodes_vl, num_edges_vl = load_data(prefix + "spice_val.npz", val_subset)
+def run(param_path, val_path, max_nodes=7200, max_edges=120000, max_graphs=1000, train_subset=-1, val_subset=3):
+    i_vl, x_vl, edges_vl, f_vl, y_vl, num_nodes_vl, num_edges_vl = load_data(val_path, val_subset)
     print("loaded")
 
     model = SparseSAKEEnergyModel(num_segments=max_graphs)
@@ -29,14 +29,14 @@ def run(path, max_nodes=7200, max_edges=120000, max_graphs=400, train_subset=-1,
         return total_f_loss, total_y_loss
 
     from flax.training.checkpoints import restore_checkpoint
-    save_path = f"val{path}"
+    save_path = f"val{param_path}_{int(time.time())}"
     os.mkdir(save_path)
     print("save_path: ", save_path)
     with open(os.path.join(save_path, "losses"), "x") as losses:
-        losses.write("Validation force loss\tValidation energy loss\n")
-        for checkpoint in sorted(os.listdir(path)):
-            losses.write(checkpoint + ": ")
-            checkpoint_path = os.path.join(path, checkpoint, "checkpoint")
+        losses.write("Checkpoint\tValidation force loss\tValidation energy loss\n")
+        for checkpoint in sorted(os.listdir(param_path)):
+            losses.write(checkpoint + "\t")
+            checkpoint_path = os.path.join(param_path, checkpoint, "checkpoint")
             print("checkpoint_path: ", checkpoint_path)
             state = restore_checkpoint(checkpoint_path, None)
             params = state['params']
@@ -48,4 +48,4 @@ def run(path, max_nodes=7200, max_edges=120000, max_graphs=400, train_subset=-1,
 
 if __name__ == "__main__":
     import sys
-    run(sys.argv[1])
+    run(param_path=sys.argv[1], val_path=sys.argv[2])
