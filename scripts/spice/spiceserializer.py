@@ -35,7 +35,6 @@ class SPICESerializer:
     def _make_npz(self, names, out_path):
         all_pos = []
         all_atom_nums = []
-        # all_total_energies = []
         all_form_energies = []
         all_grads = []
         all_subsets = []
@@ -50,7 +49,6 @@ class SPICESerializer:
                 continue
             pos_arr = self.data[name]['conformations']
             grads_arr = self.data[name]['dft_total_gradient']
-            # total_energy_arr = self.data[name]['dft_total_energy']
             form_energy_arr = self.data[name]['formation_energy']
             num_nodes = len(atom_nums)
             pad_num = self.max_atoms - num_nodes
@@ -61,7 +59,6 @@ class SPICESerializer:
             all_atom_nums.append([padded_atom_nums for conf in range(len(pos_arr))])
             all_subsets.append([self.SUBSET_MAP[self.data[name]['subset'][0]] for conf in range(len(pos_arr))])
             all_names.append([name for conf in range(len(pos_arr))])
-            # all_total_energies.append(total_energy_arr)
             all_form_energies.append(form_energy_arr)
             all_grads.append(padded_grads)
             all_pos.append(padded_pos)
@@ -70,7 +67,7 @@ class SPICESerializer:
             all_num_edges.append(num_edges)
         print(all_num_nodes)
         print(all_num_edges)
-        onp.savez(out_path, atomic_numbers=np.concatenate(all_atom_nums), formation_energy=np.concatenate(all_form_energies), forces=-np.concatenate(all_grads), pos=np.concatenate(all_pos), names=np.concatenate(all_names), subsets=np.concatenate(all_subsets), edges=np.concatenate(all_edges), num_nodes=np.concatenate(all_num_nodes), num_edges=np.concatenate(all_num_edges))
+        onp.savez(out_path, atomic_numbers=onp.concatenate(all_atom_nums), formation_energy=onp.concatenate(all_form_energies), forces=-onp.concatenate(all_grads), pos=onp.concatenate(all_pos), names=onp.concatenate(all_names), subsets=onp.concatenate(all_subsets), edges=onp.concatenate(all_edges), num_nodes=onp.concatenate(all_num_nodes), num_edges=onp.concatenate(all_num_edges))
 
     @staticmethod
     def batch_radius_graph(batch_pos, L, max_edges):
@@ -107,4 +104,4 @@ class SPICESerializer:
         return onp.array(all_edges, dtype=onp.int32), onp.array(all_num_edges, dtype=onp.int16)
 
 if __name__ == "__main__": 
-	spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', sys.argv[1], train_ratio=float(sys.argv[2]), test_ratio=float(sys.argv[3]), max_atoms=int(sys.argv[4]))
+	spice_serializer = SPICESerializer('SPICE-1.1.3.hdf5', sys.argv[1], train_ratio=float(sys.argv[2]), test_ratio=float(sys.argv[3]))
