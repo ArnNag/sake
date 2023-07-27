@@ -14,15 +14,15 @@ def load_data(path, subset=-1):
     ds = onp.load(path)
     i = ELEMENT_MAP[ds["atomic_numbers"]]
     x = ds["pos"]
+    edges = ds["edges"]
     f = ds["forces"]
     y = ds["formation_energy"]
-    edges = ds["edges"]
     num_nodes = ds["num_nodes"]
     num_edges = ds["num_edges"]
     subset_labels = ds["subsets"]
     if subset >= 0:
-        i, x, f, y, edges, num_nodes, num_edges = select(subset_labels, subset, i, x, f, y, edges, num_nodes, num_edges)
-    return i, x, f, y, edges, num_nodes, num_edges
+        i, x, edges, f, y, num_nodes, num_edges = select(subset_labels, subset, i, x, edges, f, y, num_nodes, num_edges)
+    return i, x, edges, f, y, num_nodes, num_edges
 
 def select(subset_labels, subset, *fields):
     selection = (subset_labels == subset)
@@ -118,13 +118,6 @@ def get_e_pred(model, params, i, x, edges, graph_segments):
     e_pred = model.apply(params, i, x, edges, graph_segments)
     return e_pred
 
-@partial(jax.jit, static_argnums=(0,))
-def get_e_pred_sum(model, params, i, x, edges, graph_segments):
-    e_pred = get_e_pred(model, params, i, x, edges, graph_segments)
-    return -e_pred.sum()
-
-get_f_pred = jax.jit(jax.grad(get_e_pred_sum, argnums=3), static_argnums=(0,))
-
 class SparseSAKEEnergyModel(nn.Module):
     num_segments: int
 
@@ -155,16 +148,33 @@ class SparseSAKEEnergyModel(nn.Module):
         y = self.coloring(y)
         return y
 
-def loss_fn(model, params, i, x, edges, f, y, graph_segments, e_loss_factor):
-    real_nodes = jnp.array(jnp.not_equal(graph_segments, -1), dtype=int)
-    jax.debug.print("Num real nodes: {}", jnp.sum(real_nodes))
-    e_mask = jax.ops.segment_sum(real_nodes, graph_segments, num_segments=model.num_segments) != 0
+@partial(jax.jit, static_argnums=(0,))
+def get_neg_e_pred_sum(model, params, i, x, edges, graph_segments):
+    e_pred = get_e_pred(model, params, i, x, edges, graph_segments)
+    return -e_pred.sum()
+
+get_f_pred = jax.jit(jax.grad(get_neg_e_pred_sum, argnums=3), static_argnums=(0,))
+
+
+@partial(jax.jit, static_argnums=(0,))
+def energy_loss(model, params, i, x, edges, y, graph_segments):
+    e_mask = jax.ops.segment_sum(jnp.ones_like(graph_segments), graph_segments, num_segments=model.num_segments) > 0
+    jnp.set_printoptions(threshold=10000)
+    jax.debug.print("graph_segments: {}", graph_segments)
+    jax.debug.print("e_mask: {}", e_mask)
     jax.debug.print("Num real graphs: {}", jnp.sum(e_mask))
-    jax.debug.print("Num real edge: {}", jnp.sum(edges[:,1] != -1))
-    f_mask = jnp.expand_dims(real_nodes, -1)
     e_pred = get_e_pred(model, params, i, x, edges, graph_segments) * e_mask
-    f_pred = get_f_pred(model, params, i, x, edges, graph_segments) * f_mask
     e_loss = jnp.abs(e_pred - y).mean()
+    return e_loss
+
+@partial(jax.jit, static_argnums=(0,))
+def force_loss(model, params, i, x, edges, f, graph_segments):
+    f_mask = jnp.expand_dims(jnp.array(jnp.not_equal(graph_segments, -1), dtype=int), -1)
+    jax.debug.print("Num real nodes: {}", jnp.sum(f_mask))
+    jax.debug.print("Num real edge: {}", jnp.sum(edges[:,1] != -1))
+    f_pred = get_f_pred(model, params, i, x, edges, graph_segments) * f_mask
     f_loss = jnp.abs(f_pred - f).mean()
-    return f_loss + e_loss * e_loss_factor
+    return f_loss
+
+
 

@@ -6,17 +6,20 @@ import flax
 import numpy as onp
 import sake
 import tqdm
-from utils import load_data, NUM_ELEMENTS, SPICEBatchLoader, get_e_pred, get_f_pred, SparseSAKEEnergyModel, loss_fn
+from utils import load_data, NUM_ELEMENTS, SPICEBatchLoader, SparseSAKEEnergyModel, energy_loss, force_loss
 from functools import partial
 
 def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0, subset=-1):
-    i_tr, x_tr, f_tr, y_tr, edges_tr, num_nodes_tr, num_edges_tr = load_data(prefix + "spice_train.npz", subset)
+    i_tr, x_tr, edges_tr, f_tr, y_tr, num_nodes_tr, num_edges_tr = load_data(prefix + "spice_train.npz", subset)
     print("loaded all data")
 
-    for _var in ["i", "x", "y", "f"]:
-        for _split in ["tr"]:
-            locals()["%s_%s" % (_var, _split)] = jnp.array(locals()["%s_%s" % (_var, _split)])
     model = SparseSAKEEnergyModel(num_segments=max_graphs)
+
+    @partial(jax.jit, static_argnums=(0,))
+    def loss_fn(model, params, i, x, edges, f, y, graph_segments, e_loss_factor):
+        e_loss = energy_loss(model, params, i, x, edges, y, graph_segments)
+        f_loss = force_loss(model, params, i, x, edges, f, graph_segments)
+        return f_loss + e_loss * e_loss_factor
 
     @partial(jax.jit, static_argnums=(0,))
     def step_with_loss(model, state, i, x, edges, f, y, graph_segments):
