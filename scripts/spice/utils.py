@@ -81,7 +81,7 @@ class SPICEBatchLoader:
 
 
     def get_batch(self, batch_num):
-        batch_idxs = self.batch_list[batch_num]
+        batch_idxs = jnp.array(self.batch_list[batch_num])
         batch_graph_segments = self.graph_segments[batch_num]
         batch_num_nodes = self.num_nodes_tr[batch_idxs]
         batch_num_edges = self.num_edges_tr[batch_idxs]

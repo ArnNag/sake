@@ -99,6 +99,20 @@ def test_basic():
     edges_tr = jnp.array([[[0, 1], [1, 2], [-1, -1], [-1, -1], [-1, -1]], [[0, 1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]]])
     num_edges_tr = jnp.array([2, 1])
     y_tr = jnp.array([20, 17])
-    loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=1776, max_edges=3, max_nodes=7, max_graphs=3, num_elements=13)
+    loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=1776, max_edges=4, max_nodes=7, max_graphs=3, num_elements=13)
+    i, x, edges, f, y, graph_segments = loader.get_batch(0)
+    assert jnp.allclose(i, jnp.array([[0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]]))
+    assert jnp.allclose(x, jnp.array([4., 8., 7., 11., 13, 0., 0.]))
+    assert jnp.allclose(edges, jnp.array([[0., 1.], [2., 3.], [3., 4.], [-1., -1.]]))
+    assert jnp.allclose(f, jnp.array([4., 8., 7., 11., 13, 0., 0.]))
+    assert jnp.allclose(y, jnp.array([[17.], [20.], [0.]]))
+    assert jnp.allclose(graph_segments, jnp.array([0., 0., 1., 1., 1., -1., -1.]))
+
 
 
