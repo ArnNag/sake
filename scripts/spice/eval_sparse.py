@@ -19,7 +19,7 @@ def run(param_path, val_path, max_nodes=7200, max_edges=120000, max_graphs=1000,
 
     loader = SPICEBatchLoader(i_vl, x_vl, edges_vl, f_vl, y_vl, num_nodes_vl, num_edges_vl, seed, max_edges, max_nodes, max_graphs, NUM_ELEMENTS)
 
-    def predict(params, i_full, x_full):
+    def predict(params):
         total_f_loss = 0
         total_y_loss = 0
         for idx in range(len(loader)):
@@ -29,7 +29,7 @@ def run(param_path, val_path, max_nodes=7200, max_edges=120000, max_graphs=1000,
         return total_f_loss, total_y_loss
 
     from flax.training.checkpoints import restore_checkpoint
-    save_path = f"val_debug_graphs_{max_graphs}_nodes_{max_nodes}_edges_{max_edges}_seed_{seed}"
+    save_path = f"val_debug_graphs_{max_graphs}_nodes_{max_nodes}_edges_{max_edges}_seed_{seed}_{int(time.time())}"
     os.mkdir(save_path)
     print("save_path: ", save_path)
     with open(os.path.join(save_path, "losses"), "x") as losses:
@@ -40,7 +40,7 @@ def run(param_path, val_path, max_nodes=7200, max_edges=120000, max_graphs=1000,
             print("checkpoint_path: ", checkpoint_path)
             state = restore_checkpoint(checkpoint_path, None)
             params = state['params']
-            total_f_loss, total_y_loss = predict(params, i_vl, x_vl) 
+            total_f_loss, total_y_loss = predict(params)
             # jnp.save(os.path.join(save_path, f"{checkpoint}_energies"), y_vl_hat)
             # jnp.save(os.path.join(save_path, f"{checkpoint}_forces"), f_vl_hat)
             losses.write(f"{total_f_loss}\t{total_y_loss}\n")
@@ -56,6 +56,4 @@ def scan(param_path, val_path):
 
 if __name__ == "__main__":
     import sys
-    param_path = sys.argv[1]
-    val_path = sys.argv[2]
-    scan(param_path, val_path)
+    run("_sparse_full_96_dist_nums_eloss_0e+00_subset_3", "small_96_dist_nums_spice_train.npz")
