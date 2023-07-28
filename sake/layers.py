@@ -293,12 +293,16 @@ class SparseSAKELayer(SAKELayer):
     def semantic_attention(self, h_e_mtx, edges, max_nodes):
         # att shape: (n_edges, n_heads)
         att = self.semantic_attention_mlp(h_e_mtx)
+        jax.debug.print("semantic att before softmax: {}", att)
+        jax.debug.print("segments: {}", edges[:,1])
         # return shape: (n_edges, n_heads)
-        return segment_softmax(att, edges[:,1], num_segments=max_nodes)
+        semantic_attention = jnp.nan_to_num(segment_softmax(att, edges[:,1], num_segments=max_nodes))
+        return semantic_attention
 
     def combined_attention(self, x_minus_xt_norm, h_e_mtx, edges, max_nodes):
         # semantic_attention shape: (n_edges, n_heads)
         semantic_attention = self.semantic_attention(h_e_mtx, edges, max_nodes)
+        jax.debug.print("semantic_attention after softmax: {}", semantic_attention)
         if self.cutoff is not None:
             euclidean_attention = self.cutoff(x_minus_xt_norm)
         else:
@@ -306,7 +310,13 @@ class SparseSAKELayer(SAKELayer):
 
         # combined_attention shape: (n_edges, n_heads)
         combined_attention = euclidean_attention * semantic_attention
-        combined_attention = combined_attention / jax.ops.segment_sum(combined_attention, edges[:,1], num_segments=max_nodes)[edges[:,1]]
+        jax.debug.print("combined_attention before normalization: {}", combined_attention)
+        # combined_attention_agg shape: (n_nodes, n_heads)
+        combined_attention_agg = jax.ops.segment_sum(combined_attention, edges[:,1], num_segments=max_nodes)
+        jax.debug.print("combined_attention_agg: {}", combined_attention_agg)
+        jax.debug.print("combined_attention_agg[edges[:,1]]: {}", combined_attention_agg[edges[:,1]])
+        combined_attention = jnp.nan_to_num(combined_attention / combined_attention_agg[edges[:,1]])
+        jax.debug.print("combined_attention after normalization: {}", combined_attention)
         
         return combined_attention
 

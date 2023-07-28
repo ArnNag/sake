@@ -199,7 +199,8 @@ def test_graph_order():
     import sake
     import sys
     sys.path.append('../../scripts/spice')
-    from utils import SPICEBatchLoader, SparseSAKEEnergyModel, get_e_pred
+    from utils import SPICEBatchLoader, SparseSAKEEnergyModel, get_e_pred, get_f_pred
+    jax.config.update("jax_debug_nans", True)
     key = jax.random.PRNGKey(0)
     i_tr = jnp.array([[7, 11, 13, 0, 0], [4, 8, 0, 0, 0]])
     num_graphs = i_tr.shape[0]
@@ -216,14 +217,21 @@ def test_graph_order():
     num_elements = 13
     loader0 = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=0, max_edges=max_edges, max_nodes=max_nodes, max_graphs=max_graphs, num_elements=num_elements)
     loader1 = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=1, max_edges=max_edges, max_nodes=max_nodes, max_graphs=max_graphs, num_elements=num_elements)
+    assert(loader0.batch_list[0] == [1, 0])
+    assert(loader1.batch_list[0] == [0, 1])
     i0, x0, edges0, f0, y0, graph_segments0 = loader0.get_batch(0)
     i1, x1, edges1, f1, y1, graph_segments1 = loader1.get_batch(0)
     model = SparseSAKEEnergyModel(num_segments=max_graphs)
     variables = model.init(key, i0, x0, edges0, graph_segments0)
     e_pred0 = get_e_pred(model, variables, i0, x0, edges0, graph_segments0) 
     e_pred1 = get_e_pred(model, variables, i1, x1, edges1, graph_segments1)
+    f_pred0 = get_f_pred(model, variables, i0, x0, edges0, graph_segments0)
+    f_pred1 = get_f_pred(model, variables, i1, x1, edges1, graph_segments1)
+    print("f_preds:", f_pred0, f_pred1)
     assert(jnp.allclose(e_pred0[0], e_pred1[1]))
     assert(jnp.allclose(e_pred0[1], e_pred1[0]))
+    assert(jnp.allclose(f_pred0[0:2], f_pred1[3:5]))
+    assert(jnp.allclose(f_pred0[2:5], f_pred1[0:3]))
     
 def test_graph_order_loss():
     import jax
@@ -231,7 +239,7 @@ def test_graph_order_loss():
     import sake
     import sys
     sys.path.append('../../scripts/spice')
-    from utils import SPICEBatchLoader, SparseSAKEEnergyModel, get_y_loss
+    from utils import SPICEBatchLoader, SparseSAKEEnergyModel, get_y_loss, get_f_loss
     key = jax.random.PRNGKey(0)
     i_tr = jnp.array([[7, 11, 13, 0, 0], [4, 8, 0, 0, 0]])
     num_graphs = i_tr.shape[0]
@@ -254,6 +262,18 @@ def test_graph_order_loss():
     variables = model.init(key, i0, x0, edges0, graph_segments0)
     e_loss0 = get_y_loss(model, variables, i0, x0, edges0, y0, graph_segments0) 
     e_loss1 = get_y_loss(model, variables, i1, x1, edges1, y1, graph_segments1)
+    f_loss0 = get_f_loss(model, variables, i0, x0, edges0, f0, graph_segments0)
+    f_loss1 = get_f_loss(model, variables, i1, x1, edges1, f1, graph_segments1)
     assert(e_loss0 == e_loss1)
+    assert(f_loss0 == f_loss1)
 
+def test_segment_softmax():
+    import jax.numpy as jnp
+    from utils import segment_softmax
+    att = jnp.array([[ 0.05218441, -0.11108486,  0.06595716,  0.0130074 ],
+     [ 0.13529724,  0.01634026, -0.03200634, -0.00883934],
+     [ 0.02268515,  0.07742056, -0.0038277,  -0.1017934 ],
+     [ 0.0175745,  -0.08937339,  0.04781523,  0.07290111]])
+    segments = jnp.array([1, 3, 4, -1])
+    att = segment_softmax(att, segments)
 
