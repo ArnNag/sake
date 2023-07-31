@@ -62,6 +62,35 @@ def test_diff_pad_nodes_loss():
     assert f_loss_one == f_loss_two
     assert e_loss_one == e_loss_two
 
+def test_diff_pad_nodes_pred():
+    import jax
+    import jax.numpy as jnp
+    import sake
+    import sys
+    sys.path.append('../../scripts/spice')
+    from utils import SPICEBatchLoader, SparseSAKEEnergyModel, get_e_pred, get_f_pred 
+    real_nodes = 5
+    dummy_nodes = 7
+    hidden_features = 2
+    max_nodes = real_nodes + dummy_nodes
+    graph_segments = jnp.array([0] * real_nodes + [-1] * dummy_nodes)
+    model = SparseSAKEEnergyModel(num_segments=1)
+    x = jax.random.normal(key=jax.random.PRNGKey(2666), shape=(real_nodes, 3))
+    x_dummy_one = jax.random.normal(key=jax.random.PRNGKey(2023), shape=(dummy_nodes, 3))
+    x_dummy_two = jax.random.normal(key=jax.random.PRNGKey(2024), shape=(dummy_nodes, 3))
+    x_pad_one = jnp.concatenate((x, x_dummy_one), axis=0)
+    x_pad_two = jnp.concatenate((x, x_dummy_two), axis=0)
+    h_pad_one = x_pad_one
+    h_pad_two = x_pad_two
+    real_edges = jnp.argwhere(jnp.logical_not(jnp.identity(real_nodes)))
+    init_params = model.init(jax.random.PRNGKey(2046), h_pad_one, x_pad_one, edges=real_edges, graph_segments=graph_segments)
+    f_pred_one = get_f_pred(model, init_params, h_pad_one, x_pad_one, edges=real_edges, graph_segments=graph_segments)
+    f_pred_two = get_f_pred(model, init_params, h_pad_two, x_pad_two, edges=real_edges, graph_segments=graph_segments)
+    e_pred_one = get_e_pred(model, init_params, h_pad_one, x_pad_one, edges=real_edges, graph_segments=graph_segments)
+    e_pred_two = get_e_pred(model, init_params, h_pad_two, x_pad_two, edges=real_edges, graph_segments=graph_segments)
+    assert jnp.allclose(f_pred_one, f_pred_two)
+    assert jnp.allclose(e_pred_one, e_pred_two)
+
 def test_pad_batch():
     import sys
     import jax
