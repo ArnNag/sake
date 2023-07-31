@@ -267,6 +267,50 @@ def test_graph_order_loss():
     assert(e_loss0 == e_loss1)
     assert(f_loss0 == f_loss1)
 
+def test_max_graphs_reached_loss():
+    import jax
+    import jax.numpy as jnp
+    import sake
+    import sys
+    sys.path.append('../../scripts/spice')
+    from utils import SPICEBatchLoader, SparseSAKEEnergyModel, get_y_loss, get_f_loss
+    i_tr = jnp.array([[7, 11, 13, 0, 0], [4, 8, 0, 0, 0]])
+    key = jax.random.PRNGKey(0)
+    num_graphs = i_tr.shape[0]
+    num_nodes = i_tr.shape[1]
+    x_tr = jax.random.uniform(key, shape=(num_graphs, num_nodes, 3))
+    f_tr = x_tr
+    num_nodes_tr = jnp.array([3, 2])
+    edges_tr = jnp.array([[[0, 1], [1, 2], [-1, -1], [-1, -1], [-1, -1]], [[0, 1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]]])
+    num_edges_tr = jnp.array([2, 1])
+    y_tr = jnp.array([20, 17])
+    max_graphs_split = 1
+    max_graphs_unsplit = 5
+    model_split = SparseSAKEEnergyModel(num_segments=max_graphs_split)
+    model_unsplit = SparseSAKEEnergyModel(num_segments=max_graphs_unsplit)
+    loader_split = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=1776, max_edges=4, max_nodes=7, max_graphs=max_graphs_split, num_elements=13)
+    loader_unsplit = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=1776, max_edges=4, max_nodes=7, max_graphs=max_graphs_unsplit, num_elements=13)
+    i0_split, x0_split, edges0_split, f0_split, y0_split, graph_segments0_split = loader_split.get_batch(0)
+    variables = model_split.init(key, i0_split, x0_split, edges=edges0_split, graph_segments=graph_segments0_split)
+    total_f_loss_split = 0
+    total_e_loss_split = 0
+    for i in range(len(loader_split)):
+        i, x, edges, f, y, graph_segments = loader_split.get_batch(i)
+        total_f_loss_split += get_f_loss(model_split, variables, i, x, edges, f, graph_segments)
+        total_e_loss_split += get_y_loss(model_split, variables, i, x, edges, y, graph_segments)
+
+    total_f_loss_unsplit = 0
+    total_e_loss_unsplit = 0
+    for i in range(len(loader_unsplit)):
+        i, x, edges, f, y, graph_segments = loader_unsplit.get_batch(i)
+        total_f_loss_unsplit += get_f_loss(model_unsplit, variables, i, x, edges, f, graph_segments)
+        total_e_loss_unsplit += get_y_loss(model_unsplit, variables, i, x, edges, y, graph_segments)
+
+    assert(total_f_loss_split == total_f_loss_unsplit)
+    assert(total_e_loss_split == total_e_loss_unsplit)
+
+
+
 def test_segment_softmax():
     import jax.numpy as jnp
     from utils import segment_softmax
