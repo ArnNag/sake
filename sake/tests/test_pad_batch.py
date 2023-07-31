@@ -294,15 +294,15 @@ def test_max_graphs_reached_loss():
     variables = model_split.init(key, i0_split, x0_split, edges=edges0_split, graph_segments=graph_segments0_split)
     total_f_loss_split = 0
     total_e_loss_split = 0
-    for i in range(len(loader_split)):
-        i, x, edges, f, y, graph_segments = loader_split.get_batch(i)
+    for idx in range(len(loader_split)):
+        i, x, edges, f, y, graph_segments = loader_split.get_batch(idx)
         total_f_loss_split += get_f_loss(model_split, variables, i, x, edges, f, graph_segments)
         total_e_loss_split += get_y_loss(model_split, variables, i, x, edges, y, graph_segments)
 
     total_f_loss_unsplit = 0
     total_e_loss_unsplit = 0
-    for i in range(len(loader_unsplit)):
-        i, x, edges, f, y, graph_segments = loader_unsplit.get_batch(i)
+    for idx in range(len(loader_unsplit)):
+        i, x, edges, f, y, graph_segments = loader_unsplit.get_batch(idx)
         total_f_loss_unsplit += get_f_loss(model_unsplit, variables, i, x, edges, f, graph_segments)
         total_e_loss_unsplit += get_y_loss(model_unsplit, variables, i, x, edges, y, graph_segments)
 
