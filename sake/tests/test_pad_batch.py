@@ -31,6 +31,37 @@ def test_pad():
     assert jnp.allclose(x_out_one[:real_nodes], x_out_two[:real_nodes])
     assert jnp.allclose(v_out_one[:real_nodes], v_out_two[:real_nodes])
 
+def test_diff_pad_nodes_loss():
+    import jax
+    import jax.numpy as jnp
+    import sake
+    import sys
+    sys.path.append('../../scripts/spice')
+    from utils import SPICEBatchLoader, SparseSAKEEnergyModel, get_y_loss, get_f_loss
+    real_nodes = 5
+    dummy_nodes = 7
+    hidden_features = 2
+    max_nodes = real_nodes + dummy_nodes
+    graph_segments = jnp.array([0] * real_nodes + [-1] * dummy_nodes)
+    model = SparseSAKEEnergyModel(num_segments=1)
+    x = jax.random.normal(key=jax.random.PRNGKey(2666), shape=(real_nodes, 3))
+    x_dummy_one = jax.random.normal(key=jax.random.PRNGKey(2023), shape=(dummy_nodes, 3))
+    x_dummy_two = jax.random.normal(key=jax.random.PRNGKey(2024), shape=(dummy_nodes, 3))
+    x_pad_one = jnp.concatenate((x, x_dummy_one), axis=0)
+    x_pad_two = jnp.concatenate((x, x_dummy_two), axis=0)
+    h_pad_one = x_pad_one
+    h_pad_two = x_pad_two
+    f_pad_one = x_pad_one
+    f_pad_two = x_pad_two
+    real_edges = jnp.argwhere(jnp.logical_not(jnp.identity(real_nodes)))
+    init_params = model.init(jax.random.PRNGKey(2046), h_pad_one, x_pad_one, edges=real_edges, graph_segments=graph_segments)
+    f_loss_one = get_f_loss(model, init_params, h_pad_one, x_pad_one, edges=real_edges, f=f_pad_one, graph_segments=graph_segments) 
+    f_loss_two = get_f_loss(model, init_params, h_pad_two, x_pad_two, edges=real_edges, f=f_pad_two, graph_segments=graph_segments)
+    e_loss_one = get_y_loss(model, init_params, h_pad_one, x_pad_one, edges=real_edges, y=0, graph_segments=graph_segments)
+    e_loss_two = get_y_loss(model, init_params, h_pad_two, x_pad_two, edges=real_edges, y=0, graph_segments=graph_segments)
+    assert f_loss_one == f_loss_two
+    assert e_loss_one == e_loss_two
+
 def test_pad_batch():
     import sys
     import jax
@@ -302,7 +333,7 @@ def test_max_graphs_reached_loss():
     total_f_loss_unsplit = 0
     total_e_loss_unsplit = 0
     for idx in range(len(loader_unsplit)):
-        i, x, edges, f, y, graph_segments = loader_unsplit.get_batch(idx)
+        i, x, edges, f, y, graph_segments = loader_unsplit.get_batch(i)
         total_f_loss_unsplit += get_f_loss(model_unsplit, variables, i, x, edges, f, graph_segments)
         total_e_loss_unsplit += get_y_loss(model_unsplit, variables, i, x, edges, y, graph_segments)
 
