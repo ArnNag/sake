@@ -82,6 +82,8 @@ def test_diff_pad_nodes_pred():
     x_pad_two = jnp.concatenate((x, x_dummy_two), axis=0)
     h_pad_one = x_pad_one
     h_pad_two = x_pad_two
+    f_pad_one = x_pad_one
+    f_pad_two = x_pad_two
     real_edges = jnp.argwhere(jnp.logical_not(jnp.identity(real_nodes)))
     init_params = model.init(jax.random.PRNGKey(2046), h_pad_one, x_pad_one, edges=real_edges, graph_segments=graph_segments)
     f_pred_one = get_f_pred(model, init_params, h_pad_one, x_pad_one, edges=real_edges, graph_segments=graph_segments)
@@ -90,6 +92,7 @@ def test_diff_pad_nodes_pred():
     e_pred_two = get_e_pred(model, init_params, h_pad_two, x_pad_two, edges=real_edges, graph_segments=graph_segments)
     assert jnp.allclose(f_pred_one, f_pred_two)
     assert jnp.allclose(e_pred_one, e_pred_two)
+    e_mask = jax.ops.segment_sum(jnp.ones_like(graph_segments), graph_segments, num_segments=model.num_segments) > 0
 
 def test_pad_batch():
     import sys

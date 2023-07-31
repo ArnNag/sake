@@ -160,17 +160,18 @@ get_f_pred = jax.jit(jax.grad(get_neg_e_pred_sum, argnums=3), static_argnums=(0,
 def get_y_loss(model, params, i, x, edges, y, graph_segments):
     e_mask = jax.ops.segment_sum(jnp.ones_like(graph_segments), graph_segments, num_segments=model.num_segments) > 0
     jax.debug.print("Num real graphs: {}", jnp.sum(e_mask))
-    e_pred = get_e_pred(model, params, i, x, edges, graph_segments) * e_mask
-    e_loss = jnp.abs(e_pred - y).mean()
+    e_pred = get_e_pred(model, params, i, x, edges, graph_segments)
+    e_loss = jnp.abs((e_pred - y) * e_mask).sum() / jnp.sum(e_mask)
     return e_loss
 
 @partial(jax.jit, static_argnums=(0,))
 def get_f_loss(model, params, i, x, edges, f, graph_segments):
     f_mask = jnp.expand_dims(jnp.array(jnp.not_equal(graph_segments, -1), dtype=int), -1)
+    num_graphs = jnp.sum(graph_segments != -1)
     jax.debug.print("Num real nodes: {}", jnp.sum(f_mask))
     jax.debug.print("Num real edge: {}", jnp.sum(edges[:,1] != -1))
-    f_pred = get_f_pred(model, params, i, x, edges, graph_segments) * f_mask
-    f_loss = jnp.abs(f_pred - f).mean()
+    f_pred = get_f_pred(model, params, i, x, edges, graph_segments)
+    f_loss = jnp.abs((f_pred - f) * f_mask).sum() / num_graphs
     return f_loss
 
 
