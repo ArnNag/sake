@@ -368,8 +368,10 @@ def test_max_graphs_reached_pred():
     f_pred_unsplit = get_f_pred(model_unsplit, variables, i, x, edges, graph_segments)
     e_pred_unsplit = get_e_pred(model_unsplit, variables, i, x, edges, graph_segments)
 
-    assert(jnp.allclose(all_f_pred_split[0][0], f_pred_unsplit[0]))
-    assert(jnp.allclose(all_f_pred_split[1][0], f_pred_unsplit[1]))
+    assert(jnp.allclose(all_f_pred_split[0][0:3], f_pred_unsplit[0:3]))
+    assert(jnp.allclose(all_f_pred_split[1][0:2], f_pred_unsplit[3:5]))
+    assert(jnp.allclose(all_e_pred_split[0][0], e_pred_unsplit[0]))
+    assert(jnp.allclose(all_e_pred_split[1][0], e_pred_unsplit[1]))
 
 
 
