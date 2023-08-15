@@ -94,6 +94,76 @@ def test_diff_pad_nodes_pred():
     assert jnp.allclose(e_pred_one, e_pred_two)
     e_mask = jax.ops.segment_sum(jnp.ones_like(graph_segments), graph_segments, num_segments=model.num_segments) > 0
 
+
+def test_pad_batch_jraph():
+    import sys
+    import jax
+    import jax.numpy as jnp
+    import sake
+    import jraph
+    sys.path.append('../../scripts/spice')
+    from sparse import SPICEBatchLoader
+
+    num_elements = 17
+    geom_features = 3
+    y_features = 1
+    num_graphs_tr = 997 # number of real graphs
+    num_nodes_tr = 7 # max number of nodes per graph
+    num_edges_tr = 5 # max number of edges per graph
+    max_graphs_batch = 29
+    max_nodes_batch = 53
+    max_edges_batch = 59
+    key = jax.random.PRNGKey(2666)
+    nodes_per_graph = jax.random.randint(key, shape=(num_graphs_tr,), minval=2, maxval=num_nodes_tr + 1)
+    edges_per_graph = jax.random.randint(key, shape=(num_graphs_tr,), minval=1, maxval=num_edges_tr)
+    i_tr = []
+    x_tr = []
+    edges_tr = []
+    f_tr = []
+
+    for i, (num_nodes, num_edges) in enumerate(zip(nodes_per_graph, edges_per_graph)):
+        key = jax.random.PRNGKey(i)
+        i = jnp.expand_dims(jnp.pad(jax.random.randint(key, shape=(num_nodes,), minval=0, maxval=num_elements-1), ((0, num_nodes_tr - num_nodes))), -1)
+        x = jnp.pad(jax.random.uniform(key, shape=(num_nodes, geom_features)), ((0, num_nodes_tr - num_nodes), (0, 0)))
+        all_edges = jnp.argwhere(jnp.logical_not(jnp.identity(num_nodes))) 
+        edges = jnp.pad(all_edges[jax.random.permutation(key, num_edges_tr)[:num_edges]], ((0, num_edges_tr - num_edges), (0, 0)), mode='constant', constant_values=-1)
+        f = jnp.pad(jax.random.uniform(key, shape=(num_nodes, geom_features)), ((0, num_nodes_tr - num_nodes), (0, 0)))
+        i_tr.append(i)
+        x_tr.append(x)
+        edges_tr.append(edges)
+        f_tr.append(f)
+    i_tr = jnp.array(i_tr)
+    x_tr = jnp.array(x_tr)
+    edges_tr = jnp.array(edges_tr)
+    f_tr = jnp.array(f_tr)
+    y_tr = jax.random.uniform(key, shape=(num_graphs_tr, y_features))
+    assert(i_tr.shape == (num_graphs_tr, num_nodes_tr, 1))
+    assert(x_tr.shape == (num_graphs_tr, num_nodes_tr, geom_features))
+    assert(edges_tr.shape == (num_graphs_tr, num_edges_tr, 2))
+    assert(f_tr.shape == (num_graphs_tr, num_nodes_tr, geom_features))
+    assert(y_tr.shape == (num_graphs_tr, y_features))
+
+    print("edges_tr", edges_tr[0])
+    graph_list = []
+
+    def make_graph(idx):
+        graph = jraph.GraphsTuple(
+                n_node=jnp.array(jnp.expand_dims(nodes_per_graph[idx], -1)),
+                n_edge=jnp.array(jnp.expand_dims(edges_per_graph[idx], -1)),
+                nodes={"i": i_tr[idx, :nodes_per_graph[idx]], "x": x_tr[idx, :nodes_per_graph[idx]], "f": f_tr[idx, :nodes_per_graph[idx]]},
+                senders=edges_tr[idx, :edges_per_graph[idx], 0],
+                receivers=edges_tr[idx, :edges_per_graph[idx], 1],
+                edges=None,
+                globals=y_tr[idx]
+                )
+        return graph 
+
+    graphs = jraph.dynamically_batch((make_graph(idx) for idx in range(num_graphs_tr)), n_node=max_nodes_batch, n_edge=max_edges_batch, n_graph=max_graphs_batch)
+
+    assert(print(list(graphs)[0]))
+
+
+
 def test_pad_batch():
     import sys
     import jax
@@ -105,9 +175,9 @@ def test_pad_batch():
     num_elements = 17
     geom_features = 3
     y_features = 1
-    num_graphs_tr = 997
-    num_nodes_tr = 7
-    num_edges_tr = 5
+    num_graphs_tr = 997 # number of real graphs
+    num_nodes_tr = 7 # max number of real nodes in a graph
+    num_edges_tr = 5 # max number of real edges in a graph 
     max_graphs_batch = 29
     max_nodes_batch = 53
     max_edges_batch = 59
@@ -127,17 +197,15 @@ def test_pad_batch():
         all_edges = jnp.argwhere(jnp.logical_not(jnp.identity(num_nodes))) 
         edges = jnp.pad(all_edges[jax.random.permutation(key, num_edges_tr)[:num_edges]], ((0, num_edges_tr - num_edges), (0, 0)), mode='constant', constant_values=-1)
         f = jnp.pad(jax.random.uniform(key, shape=(num_nodes, geom_features)), ((0, num_nodes_tr - num_nodes), (0, 0)))
-        y = jnp.pad(jax.random.uniform(key, shape=(num_nodes, y_features)), ((0, num_nodes_tr - num_nodes), (0, 0)))
         i_tr.append(i)
         x_tr.append(x)
         edges_tr.append(edges)
         f_tr.append(f)
-        y_tr.append(y)
     i_tr = jnp.array(i_tr)
     x_tr = jnp.array(x_tr)
     edges_tr = jnp.array(edges_tr)
     f_tr = jnp.array(f_tr)
-    y_tr = jnp.array(y_tr)
+    y_tr = jax.random.uniform(key, shape=(num_graphs_tr, y_features))
     assert(i_tr.shape == (num_graphs_tr, num_nodes_tr))
     assert(x_tr.shape == (num_graphs_tr, num_nodes_tr, geom_features))
     assert(edges_tr.shape == (num_graphs_tr, num_edges_tr, 2))
