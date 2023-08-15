@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 from jax.experimental.ode import odeint
 from flax import linen as nn
-from .models import DenseSAKEModel
+from .models import SAKEModel
 from functools import partial
 import math
 from typing import Callable
@@ -100,7 +100,7 @@ class AugmentedFlowLayer(nn.Module):
     activation: Callable=nn.silu
     def setup(self):
         import sake
-        self.sake_model = sake.models.DenseSAKEModel(
+        self.sake_model = sake.models.SAKEModel(
             hidden_features=self.hidden_features,
             depth=self.depth,
             out_features=1,

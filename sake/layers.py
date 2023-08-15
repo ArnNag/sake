@@ -146,14 +146,13 @@ class SAKELayer(nn.Module):
         # att shape: (n_edges, n_heads)
         att = self.semantic_attention_mlp(h_e_mtx)
         jax.debug.print("semantic att before softmax: {}", att)
-        jax.debug.print("segments: {}", graph.receivers)
         # return shape: (n_edges, n_heads)
         semantic_attention = jnp.nan_to_num(jraph.segment_softmax(att, graph.receivers, num_segments=sum(graph.n_node)))
         return semantic_attention
 
     def combined_attention(self, x_minus_xt_norm, h_e_mtx, graph):
         # semantic_attention shape: (n_edges, n_heads)
-        semantic_attention = self.semantic_attention(h_e_mtx, graph.receivers)
+        semantic_attention = self.semantic_attention(h_e_mtx, graph)
         jax.debug.print("semantic_attention after softmax: {}", semantic_attention)
         if self.cutoff is not None:
             euclidean_attention = self.cutoff(x_minus_xt_norm)
@@ -221,7 +220,7 @@ class SAKELayer(nn.Module):
             v = delta_v + v
             x = x + v
 
-        return jraph.GraphsTuple(nodes=frozen_dict.freeze({'h': h, 'x': x, 'v': v}), senders=graph.senders, receivers=graph.receivers)
+        return graph._replace(nodes=graph.nodes.copy({'h': h, 'x': x, 'v': v}))
 
 
 class EquivariantGraphConvolutionalLayer(nn.Module):
