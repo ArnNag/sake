@@ -6,6 +6,7 @@ import jraph
 import sake
 from typing import Optional
 from functools import partial
+from flax.core import frozen_dict
 
 # Index into ELEMENT_MAP is atomic number, value is type number. -99 indicates element not in dataset.
 ELEMENT_MAP = onp.array([0,  1, -99,  2, -99, -99,  3,  4,  5,  6, -99,  7,  8, -99, -99,  9, 10, 11, -99, 12, 13, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, 14, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, -99, 15])
@@ -30,7 +31,7 @@ def load_data(path, subset=-1):
         graph = jraph.GraphsTuple(
                 n_node=num_nodes[idx],
                 n_edge=num_edges[idx],
-                nodes={"i": i[idx, :num_nodes[idx]], "x": x[idx, :num_nodes[idx]], "f": f[idx, :num_nodes[idx]]},
+                nodes=frozen_dict.freeze({"i": i[idx, :num_nodes[idx]], "x": x[idx, :num_nodes[idx]], "f": f[idx, :num_nodes[idx]]}),
                 senders=edges[idx, :num_edges[idx], 0],
                 receivers=edges[idx, :num_edges[idx], 1],
                 edges=None,
@@ -120,7 +121,8 @@ class SAKEEnergyModel(nn.Module):
 
 
 @partial(jax.jit, static_argnums=(0,))
-def get_neg_y_pred_sum(model, params, graph):
+def get_neg_y_pred_sum(model, params, graph, x):
+    graph = graph._replace(nodes=graph.nodes.copy(add_or_replace={"x": x}))
     y_pred = get_y_pred(model, params, graph)
     return -y_pred.sum()
 

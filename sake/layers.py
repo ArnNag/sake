@@ -6,6 +6,7 @@ from .utils import ExpNormalSmearing
 from .functional import get_x_minus_xt, get_x_minus_xt_norm, get_h_cat_ht
 from functools import partial
 import jraph
+from flax.core import frozen_dict
 
 
 def double_sigmoid(x):
@@ -220,7 +221,7 @@ class SAKELayer(nn.Module):
             v = delta_v + v
             x = x + v
 
-        return jraph.GraphsTuple(nodes={'h': h, 'x': x, 'v': v}, senders=graph.senders, receivers=graph.receivers)
+        return jraph.GraphsTuple(nodes=frozen_dict.freeze({'h': h, 'x': x, 'v': v}), senders=graph.senders, receivers=graph.receivers)
 
 
 class EquivariantGraphConvolutionalLayer(nn.Module):
