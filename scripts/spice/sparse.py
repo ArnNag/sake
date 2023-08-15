@@ -1,15 +1,11 @@
 import jax
-import jax.numpy as jnp
 import optax
-from flax import linen as nn
 import flax
-import numpy as onp
-import sake
-import tqdm
-from utils import load_data, NUM_ELEMENTS, make_batch_loader, SAKEEnergyModel, get_y_loss, get_f_loss
+from utils import load_data, make_batch_loader, SAKEEnergyModel, get_y_loss, get_f_loss
 from functools import partial
 
-def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0, subset=-1):
+
+def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0., subset=-1):
     graph_list, y_mean, y_std = load_data(prefix + "spice_train.npz", subset)
     print("loaded all data")
 
@@ -68,7 +64,6 @@ def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0
     state = TrainState.create(
         apply_fn=model.apply, params=variables, tx=masked_optimizer
     )
-
 
     NUM_EPOCHS = 100
     for epoch_num in range(NUM_EPOCHS):

@@ -1,27 +1,24 @@
-import jax
 import jax.numpy as jnp
 from flax import linen as nn
 from typing import Callable, Union, List
 from .layers import (
     SAKELayer,
-    DenseSAKELayer,
-    SparseSAKELayer,
     EquivariantGraphConvolutionalLayer,
     EquivariantGraphConvolutionalLayerWithSmearing,
 )
+
 
 class SAKEModel(nn.Module):
     hidden_features: int
     out_features: int
     depth: int = 4
-    activation: Callable=nn.silu
-    update: Union[List[bool], bool]=True
+    activation: Callable = nn.silu
+    update: Union[List[bool], bool] = True
     use_semantic_attention: bool = True
     use_euclidean_attention: bool = True
     use_spatial_attention: bool = True
-    n_heads: int=4
-    cutoff: Callable=None
-    layer_type: type[SAKELayer]=SAKELayer
+    n_heads: int = 4
+    cutoff: Callable = None
 
     def setup(self):
         self.embedding_in = nn.Dense(self.hidden_features)
@@ -42,7 +39,7 @@ class SAKEModel(nn.Module):
             setattr(
                 self,
                 "d%s" % idx,
-                self.layer_type(
+                SAKELayer(
                     hidden_features=self.hidden_features,
                     out_features=self.hidden_features,
                     update=update[idx],
@@ -56,32 +53,20 @@ class SAKEModel(nn.Module):
 
         self.layers = [getattr(self, "d%s" % idx) for idx in range(self.depth)]
 
-    def __call__(self, h, x, v=None, mask=None, he=None):
-        h = self.embedding_in(h)
+    def __call__(self, graph):
+        graph.nodes['h'] = self.embedding_in(graph.nodes['h'])
         for layer in self.layers:
-            h, x, v = layer(h, x, v, mask=mask, he=he)
-        h = self.embedding_out(h)
-        return h, x, v
+            graph = layer(graph)
+        graph['h'] = self.embedding_out(graph.nodes['h'])
+        return graph
 
-class DenseSAKEModel(SAKEModel):
-    layer_type: type[SAKELayer]=DenseSAKELayer
-
-class SparseSAKEModel(SAKEModel):
-    layer_type: type[SAKELayer]=SparseSAKELayer
-
-    def __call__(self, h, x, v=None, edges=None, he=None):
-        h = self.embedding_in(h)
-        for layer in self.layers:
-            h, x, v = layer(h, x, v, edges=edges, he=he)
-        h = self.embedding_out(h)
-        return h, x, v
 
 class EquivariantGraphNeuralNetwork(nn.Module):
     hidden_features: int
     out_features: int
     depth: int = 4
-    activation: Callable=nn.silu
-    update: Union[List[bool], bool]=True
+    activation: Callable = nn.silu
+    update: Union[List[bool], bool] = True
     smear: bool = False
     sigmoid: bool = False
 
@@ -99,7 +84,6 @@ class EquivariantGraphNeuralNetwork(nn.Module):
             layer = EquivariantGraphConvolutionalLayerWithSmearing
         else:
             layer = EquivariantGraphConvolutionalLayer
-
 
         for idx in range(self.depth):
             setattr(
