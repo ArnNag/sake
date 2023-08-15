@@ -6,49 +6,48 @@ import flax
 import numpy as onp
 import sake
 import tqdm
-from utils import load_data, NUM_ELEMENTS, SPICEBatchLoader, SparseSAKEEnergyModel, get_y_loss, get_f_loss
+from utils import load_data, NUM_ELEMENTS, make_batch_loader, SAKEEnergyModel, get_y_loss, get_f_loss
 from functools import partial
 
 def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0, subset=-1):
-    i_tr, x_tr, edges_tr, f_tr, y_tr, num_nodes_tr, num_edges_tr = load_data(prefix + "spice_train.npz", subset)
+    graph_list, y_mean, y_std = load_data(prefix + "spice_train.npz", subset)
     print("loaded all data")
 
-    model = SparseSAKEEnergyModel(num_segments=max_graphs)
+    model = SAKEEnergyModel()
 
     @partial(jax.jit, static_argnums=(0,))
-    def loss_fn(model, params, i, x, edges, f, y, graph_segments, e_loss_factor):
-        e_loss = get_y_loss(model, params, i, x, edges, y, graph_segments)
-        f_loss = get_f_loss(model, params, i, x, edges, f, graph_segments)
+    def loss_fn(model, params, graph):
+        e_loss = get_y_loss(model, params, graph)
+        f_loss = get_f_loss(model, params, graph)
         return f_loss + e_loss * e_loss_factor
 
     @partial(jax.jit, static_argnums=(0,))
-    def step_with_loss(model, state, i, x, edges, f, y, graph_segments):
+    def step_with_loss(model, state, graph):
         variables = state.params
-        grads = jax.grad(loss_fn, argnums=1)(model, variables, i, x, edges, f, y, graph_segments, e_loss_factor)
+        grads = jax.grad(loss_fn, argnums=1)(model, variables, graph)
         state = state.apply_gradients(grads=grads)
         return state
     
-    def epoch(model, state, i_tr, x_tr, edges_tr, f_tr, y_tr):
-        loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=state.step, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs, num_elements=NUM_ELEMENTS)
+    def epoch(model, state, graph_list):
+        loader = make_batch_loader(graph_list, seed=state.step, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs)
 
-        for idx in tqdm.tqdm(range(len(loader))):
-            i, x, edges, f, y, graph_segments = loader.get_batch(idx)  
-            state = step_with_loss(model, state, i, x, edges, f, y, graph_segments)
+        for graph in loader:
+            state = step_with_loss(model, state, graph)
 
         return state
 
-    init_loader = SPICEBatchLoader(i_tr=i_tr, x_tr=x_tr, edges_tr=edges_tr, f_tr=f_tr, y_tr=y_tr, num_nodes_tr=num_nodes_tr, num_edges_tr=num_edges_tr, seed=2666, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs, num_elements=NUM_ELEMENTS)
-    i0, x0, edges0, _, __, graph_segments0 = init_loader.get_batch(0)
+    init_loader = list(make_batch_loader(graph_list, seed=0, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs))
+    init_graph = init_loader[0]
 
     key = jax.random.PRNGKey(2666)
-    variables = model.init(key, i0, x0, edges0, graph_segments0)
-    variables = variables.copy({'coloring': {'mean': y_tr.mean(), 'std': y_tr.std()}})
+    variables = model.init(key, init_graph)
+    variables = variables.copy({'coloring': {'mean': y_mean, 'std': y_std}})
 
     scheduler = optax.warmup_cosine_decay_schedule(
         init_value=1e-6,
         peak_value=1e-4,
-        warmup_steps=100 * len(i_tr) // len(init_loader),
-        decay_steps=1900 * len(i_tr) // len(init_loader),
+        warmup_steps=100 * len(graph_list) // len(init_loader),
+        decay_steps=1900 * len(graph_list) // len(init_loader),
     )
 
     optimizer = optax.chain(
@@ -74,7 +73,7 @@ def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0
     NUM_EPOCHS = 100
     for epoch_num in range(NUM_EPOCHS):
         print("before epoch")
-        state = epoch(model, state, i_tr, x_tr, edges_tr, f_tr, y_tr)
+        state = epoch(model, state, graph_list)
         print("after epoch")
         print("notfinite_count:", state.opt_state.inner_states["trainable"].inner_state.notfinite_count)
         # assert state.opt_state.notfinite_count <= 10

@@ -5,13 +5,9 @@ from typing import Optional, Union, Iterable, Mapping, Any
 EPSILON = 1e-5
 INF = 1e5
 
-def get_x_minus_xt(x):
-    return jnp.expand_dims(x, -3) - jnp.expand_dims(x, -2)
-
-def get_x_minus_xt_sparse(x, edges):
-    # x_edges shape: (n_nodes, 2, 3)
-    x_edges = x[edges]
-    return x_edges[:,1,:] - x_edges[:,0,:] # shape: (n_nodes, 3)
+def get_x_minus_xt(graph):
+    x = graph.nodes['x']
+    return x[graph.receivers] - x[graph.senders] # shape: (n_nodes, 3)
 
 def get_x_minus_xt_norm(
     x_minus_xt,
@@ -24,33 +20,11 @@ def get_x_minus_xt_norm(
 
     return x_minus_xt_norm
 
-# def get_h_cat_ht(h):
-#     n_nodes = h.shape[-2]
-#     h_cat_ht = jnp.concatenate(
-#         [
-#             jnp.repeat(jnp.expand_dims(h, -3), n_nodes, -3),
-#             jnp.repeat(jnp.expand_dims(h, -2), n_nodes, -2)
-#         ],
-#         axis=-1
-#     )
-#
-#     return h_cat_ht
 
-def get_h_cat_ht(h):
-    n_nodes = h.shape[-2]
-    h_shape = (*h.shape[:-2], n_nodes, n_nodes, h.shape[-1])
-    h_cat_ht = jnp.concatenate(
-        [
-            jnp.broadcast_to(jnp.expand_dims(h, -3), h_shape),
-            jnp.broadcast_to(jnp.expand_dims(h, -2), h_shape),
-        ],
-        axis=-1,
-    )
 
-    return h_cat_ht
-
-def get_h_cat_ht_sparse(h, edges):
-    return h[edges].reshape(edges.shape[0], -1)
+def get_h_cat_ht_sparse(graph):
+    h = graph.nodes['h']
+    return jnp.concatenate([h[graph.senders], h[graph.receivers]], axis=-1)
 
 ArrayTree = Union[jnp.ndarray, Iterable['ArrayTree'], Mapping[Any, 'ArrayTree']]
 def segment_softmax(logits: jnp.ndarray,

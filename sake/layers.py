@@ -5,6 +5,7 @@ from typing import Callable, Optional
 from .utils import ExpNormalSmearing
 from .functional import get_x_minus_xt, get_x_minus_xt_norm, get_h_cat_ht, get_h_cat_ht_sparse, get_x_minus_xt_sparse, segment_mean, segment_softmax
 from functools import partial
+import jraph
 
 def double_sigmoid(x):
     return 2.0 * jax.nn.sigmoid(x)
@@ -104,159 +105,8 @@ class SAKELayer(nn.Module):
         else:
             self.log_gamma = jnp.ones(self.n_heads)
 
-class DenseSAKELayer(SAKELayer):
-    def spatial_attention(self, h_e_mtx, x_minus_xt, x_minus_xt_norm, mask=None):
-        # (batch_size, n, n, n_coefficients)
-        # coefficients = self.coefficients_mlp(h_e_mtx)# .unsqueeze(-1)
-        coefficients = self.x_mixing(h_e_mtx)
 
-        # (batch_size, n, n, 3)
-        # x_minus_xt = x_minus_xt * euclidean_attention.mean(dim=-1, keepdim=True) / (x_minus_xt_norm + 1e-5)
-        x_minus_xt = x_minus_xt / (x_minus_xt_norm + 1e-5) # ** 2
-
-        # (batch_size, n, n, coefficients, 3)
-        combinations = jnp.expand_dims(x_minus_xt, -2) * jnp.expand_dims(coefficients, -1)
-        # combinations = jnp.einsum("bnNx,bnNc->bnNcx", x_minus_xt, coefficients)
-
-        if mask is not None:
-            _mask = jnp.expand_dims(jnp.expand_dims(mask, -1), -1)
-            combinations = combinations * _mask
-            # combinations = jnp.einsum("bnNcx,bnN->bnNcx", combinations, mask)
-            combinations_sum = combinations.sum(axis=-3) / (_mask.sum(axis=-3) + 1e-8)
-            # combinations_sum = jnp.einsum("bnNcx,bn->bncx", combinations, 1 / (mask.sum(axis=-1) + 1e-8))
-
-
-        else:
-            # (batch_size, n, n, coefficients)
-            combinations_sum = combinations.mean(axis=-3)
-
-        combinations_norm = (combinations_sum ** 2).sum(-1)# .pow(0.5)
-
-        h_combinations = self.post_norm_mlp(combinations_norm)
-        # h_combinations = self.norm(h_combinations)
-        return h_combinations, combinations
-
-    def aggregate(self, h_e_mtx, mask=None):
-        # h_e_mtx = self.mask_self(h_e_mtx)
-        if mask is not None:
-            h_e_mtx = h_e_mtx * jnp.expand_dims(mask, -1)
-        h_e = h_e_mtx.sum(axis=-2)
-        return h_e
-
-    def node_model(self, h, h_e, h_combinations):
-        out = jnp.concatenate([
-                h,
-                h_e,
-                h_combinations,
-            ],
-            axis=-1)
-        out = self.node_mlp(out)
-        out = h + out
-        return out
-
-    def euclidean_attention(self, x_minus_xt_norm, mask=None):
-        # (batch_size, n, n, 1)
-        _x_minus_xt_norm = x_minus_xt_norm + 1e5 * jnp.expand_dims(jnp.eye(
-            x_minus_xt_norm.shape[-2],
-            x_minus_xt_norm.shape[-2],
-        ), -1)
-
-        if mask is not None:
-            _x_minus_xt_norm = _x_minus_xt_norm + 1e5 * (1- jnp.expand_dims(mask, -1))
-
-        att = jax.nn.softmax(
-            -_x_minus_xt_norm * jnp.exp(self.log_gamma),
-            axis=-2,
-        )
-        return att
-
-    def semantic_attention(self, h_e_mtx, mask=None):
-        # (batch_size, n, n, n_heads)
-        att = self.semantic_attention_mlp(h_e_mtx)
-
-        # (batch_size, n, n, n_heads)
-        # att = att.view(*att.shape[:-1], self.n_heads)
-        att = att - 1e5 * jnp.expand_dims(jnp.eye(
-            att.shape[-2],
-            att.shape[-2],
-        ), -1)
-
-        if mask is not None:
-            att = att - 1e5 * (1 - jnp.expand_dims(mask, -1))
-
-        att = jax.nn.softmax(att, axis=-2)
-        return att
-
-    def combined_attention(self, x_minus_xt_norm, h_e_mtx, mask=None):
-        semantic_attention = self.semantic_attention(h_e_mtx, mask=mask)
-        if self.cutoff is not None:
-            euclidean_attention = self.cutoff(x_minus_xt_norm)
-        else:
-            euclidean_attention = 1.0
-        combined_attention = euclidean_attention * semantic_attention
-        if mask is not None:
-            combined_attention = combined_attention - 1e5 * (1 - jnp.expand_dims(mask, -1))
-        # combined_attention = jax.nn.softmax(combined_attention, axis=-2)
-        combined_attention = combined_attention / combined_attention.sum(axis=-2, keepdims=True)
-        
-        return combined_attention
-
-    def velocity_model(self, v, h):
-        v = self.velocity_mlp(h) * v
-        return v
-
-    def __call__(
-            self,
-            h,
-            x,
-            v=None,
-            mask=None,
-            he=None,
-        ):
-
-        x_minus_xt = get_x_minus_xt(x)
-        x_minus_xt_norm = get_x_minus_xt_norm(x_minus_xt=x_minus_xt)
-        h_cat_ht = get_h_cat_ht(h)
-
-        if he is not None:
-            h_cat_ht = jnp.concatenate([h_cat_ht, he], -1)
-
-        h_e_mtx = self.edge_model(h_cat_ht, x_minus_xt_norm)
-        combined_attention = self.combined_attention(x_minus_xt_norm, h_e_mtx, mask=mask)
-        h_e_att = jnp.expand_dims(h_e_mtx, -1) * jnp.expand_dims(combined_attention, -2)
-        h_e_att = jnp.reshape(h_e_att, h_e_att.shape[:-2] + (-1, ))
-        h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, mask=mask)
-
-        if not self.use_spatial_attention:
-            h_combinations = jnp.zeros_like(h_combinations)
-            delta_v = jnp.zeros_like(delta_v)
-
-        # h_e_mtx = (h_e_mtx.unsqueeze(-1) * combined_attention.unsqueeze(-2)).flatten(-2, -1)
-        h_e = self.aggregate(h_e_att, mask=mask)
-        h = self.node_model(h, h_e, h_combinations)
-
-        if self.update:
-            if mask is not None:
-                delta_v = self.v_mixing(delta_v.swapaxes(-1, -2)).swapaxes(-1, -2).sum(axis=(-2, -3))
-                delta_v = delta_v / (mask.sum(-1, keepdims=True) + 1e-10)
-            else:
-                delta_v = self.v_mixing(delta_v.swapaxes(-1, -2)).swapaxes(-1, -2).mean(axis=(-2, -3))
-
-
-            if v is not None:
-                v = self.velocity_model(v, h)
-            else:
-                v = jnp.zeros_like(x)
-
-            v = delta_v + v
-            x = x + v
-
-
-        return h, x, v
-
-
-class SparseSAKELayer(SAKELayer):
-    def spatial_attention(self, h_e_mtx, x_minus_xt, x_minus_xt_norm, edges, max_nodes):
+    def spatial_attention(self, h_e_mtx, x_minus_xt, x_minus_xt_norm, graph):
         # coefficients shape: (n_edges, hidden_features * n_heads)
         coefficients = self.x_mixing(h_e_mtx)
         x_minus_xt = x_minus_xt / (x_minus_xt_norm + 1e-5) # ** 2
@@ -275,8 +125,8 @@ class SparseSAKELayer(SAKELayer):
         h_combinations = self.post_norm_mlp(combinations_norm)
         return h_combinations, combinations
 
-    def aggregate(self, h_e_mtx, edges, max_nodes):
-        return jax.ops.segment_sum(h_e_mtx, edges[:,1], num_segments=max_nodes)
+    def aggregate(self, h_e_mtx, graph):
+        return jax.ops.segment_sum(h_e_mtx, graph.receivers, num_segments=graph.n_nodes)
 
     def node_model(self, h, h_e, h_combinations):
         out = jnp.concatenate([
@@ -290,18 +140,18 @@ class SparseSAKELayer(SAKELayer):
         return out
 
 
-    def semantic_attention(self, h_e_mtx, edges, max_nodes):
+    def semantic_attention(self, h_e_mtx, graph):
         # att shape: (n_edges, n_heads)
         att = self.semantic_attention_mlp(h_e_mtx)
         jax.debug.print("semantic att before softmax: {}", att)
-        jax.debug.print("segments: {}", edges[:,1])
+        jax.debug.print("segments: {}", graph.receivers)
         # return shape: (n_edges, n_heads)
-        semantic_attention = jnp.nan_to_num(segment_softmax(att, edges[:,1], num_segments=max_nodes))
+        semantic_attention = jnp.nan_to_num(segment_softmax(att, graph.receivers, num_segments=graph.n_nodes))
         return semantic_attention
 
-    def combined_attention(self, x_minus_xt_norm, h_e_mtx, edges, max_nodes):
+    def combined_attention(self, x_minus_xt_norm, h_e_mtx, graph):
         # semantic_attention shape: (n_edges, n_heads)
-        semantic_attention = self.semantic_attention(h_e_mtx, edges, max_nodes)
+        semantic_attention = self.semantic_attention(h_e_mtx, graph.receivers)
         jax.debug.print("semantic_attention after softmax: {}", semantic_attention)
         if self.cutoff is not None:
             euclidean_attention = self.cutoff(x_minus_xt_norm)
@@ -312,10 +162,10 @@ class SparseSAKELayer(SAKELayer):
         combined_attention = euclidean_attention * semantic_attention
         jax.debug.print("combined_attention before normalization: {}", combined_attention)
         # combined_attention_agg shape: (n_nodes, n_heads)
-        combined_attention_agg = jax.ops.segment_sum(combined_attention, edges[:,1], num_segments=max_nodes)
+        combined_attention_agg = jax.ops.segment_sum(combined_attention, edges[:,1], num_segments=graph.n_nodes)
         jax.debug.print("combined_attention_agg: {}", combined_attention_agg)
-        jax.debug.print("combined_attention_agg[edges[:,1]]: {}", combined_attention_agg[edges[:,1]])
-        combined_attention = jnp.nan_to_num(combined_attention / combined_attention_agg[edges[:,1]])
+        jax.debug.print("combined_attention_agg[edges[:,1]]: {}", combined_attention_agg[graph.receivers])
+        combined_attention = jnp.nan_to_num(combined_attention / combined_attention_agg[graph.receivers])
         jax.debug.print("combined_attention after normalization: {}", combined_attention)
         
         return combined_attention
@@ -326,45 +176,39 @@ class SparseSAKELayer(SAKELayer):
 
     def __call__(
             self,
-            h,
-            x,
-            v=None,
-            edges=None,
-            he=None,
-        ):
+            graph : jraph.GraphsTuple,
+        ) -> jraph.GraphsTuple:
 
-        max_nodes = h.shape[-2]
+        v = graph.nodes['v']
+
         # x_minus_xt shape: (n_edges, 3)
-        x_minus_xt = get_x_minus_xt_sparse(x, edges)
+        x_minus_xt = get_x_minus_xt_sparse(graph)
         # x_minus_xt norm shape: (n_edges, 1)
         x_minus_xt_norm = get_x_minus_xt_norm(x_minus_xt=x_minus_xt)
         # h_cat_ht shape: (n_edges, hidden_features * 2 [concatenated sender and receiver]) 
-        h_cat_ht = get_h_cat_ht_sparse(h, edges)
-
-        if he is not None:
-            h_cat_ht = jnp.concatenate([h_cat_ht, he], -1)
+        h_cat_ht = get_h_cat_ht_sparse(graph)
 
         # h_e_mtx shape: (n_edges, hidden_features)
         h_e_mtx = self.edge_model(h_cat_ht, x_minus_xt_norm)
         # combined_attention shape: (n_edges, n_heads)
-        combined_attention = self.combined_attention(x_minus_xt_norm, h_e_mtx, edges, max_nodes)
+        combined_attention = self.combined_attention(x_minus_xt_norm, h_e_mtx, graph)
         # e: edge axis; f: hidden feature axis; h: head axis
         h_e_att = jnp.einsum("ef,eh->efh", h_e_mtx, combined_attention) 
         h_e_att = jnp.reshape(h_e_att, h_e_att.shape[:-2] + (-1, ))
         # h_e_att shape after reshape: (n_edges,  hidden_features * n_heads)
-        h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, edges, max_nodes)
+        h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, graph)
 
         if not self.use_spatial_attention:
             h_combinations = jnp.zeros_like(h_combinations)
             delta_v = jnp.zeros_like(delta_v)
 
-        h_e = self.aggregate(h_e_att, edges, max_nodes)
-        h = self.node_model(h, h_e, h_combinations)
+        h_e = self.aggregate(h_e_att, graph)
+        h = self.node_model(graph.nodes['h'], h_e, h_combinations)
 
         if self.update:
             # delta_v shape: (n_edges, hidden_features * n_heads, 3)
-            delta_v = jax.ops.segment_sum(self.v_mixing(delta_v.swapaxes(-1, -2)).squeeze(-1), edges[:,1], num_segments = max_nodes)
-            delta_v = delta_v / jnp.expand_dims((jax.ops.segment_sum(jnp.ones_like(edges[:,1]), edges[:,1], num_segments=max_nodes) + 1e-10), -1)
+            delta_v = jax.ops.segment_sum(self.v_mixing(delta_v.swapaxes(-1, -2)).squeeze(-1), graph.receivers, num_segments = max_nodes)
+            delta_v = delta_v / jnp.expand_dims((jax.ops.segment_sum(jnp.ones_like(edges[:,1]), graph.receivers, num_segments=max_nodes) + 1e-10), -1)
             # delta_v shape after normalization: (n_edges, 3)
 
 
@@ -373,11 +217,11 @@ class SparseSAKELayer(SAKELayer):
             else:
                 v = jnp.zeros_like(x)
 
-            v = delta_v + v
-            x = x + v
+            v = delta_v + graph.nodes['v']
+            x = graph.nodes['x'] + v
 
 
-        return h, x, v
+        return jraph.GraphsTuple(nodes={'h': h, 'x': x, 'v': v}, senders=graph.senders, receivers=graph.receivers)
 
 class EquivariantGraphConvolutionalLayer(nn.Module):
     out_features : int

@@ -2,7 +2,9 @@ import numpy as onp
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
+import jraph
 import sake
+from typing import Optional
 from functools import partial
 
 # Index into ELEMENT_MAP is atomic number, value is type number. -99 indicates element not in dataset.
@@ -22,7 +24,19 @@ def load_data(path, subset=-1):
     subset_labels = ds["subsets"]
     if subset >= 0:
         i, x, edges, f, y, num_nodes, num_edges = select(subset_labels, subset, i, x, edges, f, y, num_nodes, num_edges)
-    return i, x, edges, f, y, num_nodes, num_edges
+
+    def make_graph(idx):
+        graph = jraph.GraphsTuple(
+                n_node=num_nodes[idx],
+                n_edge=num_edges[idx],
+                nodes={"i": i[idx, :num_nodes[idx]], "x": x[idx, :num_nodes[idx]], "f": f[idx, :num_nodes[idx]]},
+                senders=edges[idx, :num_edges[idx], 0],
+                receivers=edges[idx, :num_edges[idx], 1],
+                edges=None,
+                globals=y[idx]
+                )
+        return graph 
+    return [graph(idx) for idx in range(len(y))], y.mean(), y.std()
 
 def select(subset_labels, subset, *fields):
     selection = (subset_labels == subset)
@@ -31,95 +45,45 @@ def select(subset_labels, subset, *fields):
 '''
 Initialize for every epoch with a unique seed.
 '''
-class SPICEBatchLoader:
+def make_batch_loader(graph_list, seed, max_nodes, max_edges, max_graphs):
+    key = jax.random.PRNGKey(seed)
+    idxs = jax.random.permutation(key, len(graph_list))
+    yield from jraph.dynamically_batch((graph_list[idx] for idx in idxs), n_node=max_nodes, n_edge=max_edges, n_graph=max_graphs):
 
-    def __init__(self, i_tr, x_tr, edges_tr, f_tr, y_tr, num_nodes_tr, num_edges_tr, seed, max_edges, max_nodes, max_graphs, num_elements):
-        self.num_elements = num_elements
-        self.i_tr = i_tr
-        self.x_tr = x_tr
-        self.edges_tr = edges_tr
-        self.f_tr = f_tr
-        self.y_tr = y_tr
-        self.num_nodes_tr = num_nodes_tr
-        self.num_edges_tr = num_edges_tr
-        self.max_edges = max_edges
-        self.max_nodes = max_nodes
-        self.max_graphs = max_graphs
-        key = jax.random.PRNGKey(seed)
-        self.idxs = jax.random.permutation(key, len(i_tr))
-        self.batch_list, self.graph_segments = self._make_batch_list()
+def partition_sum(data: jnp.ndarray,
+                  partitions: jnp.ndarray,
+                  sum_partitions: Optional[int] = None):
+    """Compute a sum within partitions of an array.
 
-    def __len__(self):
-        return len(self.batch_list)
+    For example:
+          data = jnp.array([1.0, 2.0, 3.0, 1.0, 2.0])
+          partitions = jnp.array([3, 2])
+          partition_sum(data, partitions)
+          >> DeviceArray(
+          >> [6.0, 3.0],
+          >> dtype=float32)
 
-    def _make_batch_list(self):
-        total_graphs_added = 0
-        batch_list = []
-        graph_segment_list = []
-        while total_graphs_added < len(self.idxs):
-            batch_idxs = []
-            batch_graph_segments = []
-            batch_nodes_added = 0
-            batch_edges_added = 0
-            while True:
-                tr_idx = self.idxs[total_graphs_added]
-                batch_nodes_added += self.num_nodes_tr[tr_idx] 
-                batch_edges_added += self.num_edges_tr[tr_idx]
-                if len(batch_idxs) >= self.max_graphs or batch_nodes_added >= self.max_nodes or batch_edges_added >= self.max_edges:
-                    break
-                batch_graph_segments.extend([len(batch_idxs)] * self.num_nodes_tr[tr_idx].item())
-                batch_idxs.append(tr_idx)
-                total_graphs_added += 1
-            batch_list.append(batch_idxs)
-            batch_graph_segments.extend([-1] * (self.max_nodes - len(batch_graph_segments)))
-            graph_segment_list.append(batch_graph_segments)
-        # print("num_nodes_tr:", self.num_nodes_tr)
-        # print("num_edges_tr:", self.num_edges_tr)
-        # print("batch_list:", batch_list)
-        # print("graph_segment_list:", graph_segment_list)
-        return batch_list, jnp.array(graph_segment_list)
+    Args:
+      data: an array with the values to be summed.
+      partitions: the number of nodes per graph. It is a vector of integers with
+        shape ``[n_graphs]``, such that ``graph.n_node[i]`` is the number of nodes
+        in the i-th graph.
+      sum_partitions: the sum of n_node. If not passed, the result of this method
+        is data dependent and so not ``jit``-able.
 
-
-    def get_batch(self, batch_num):
-        batch_idxs = jnp.array(self.batch_list[batch_num])
-        batch_graph_segments = self.graph_segments[batch_num]
-        batch_num_nodes = self.num_nodes_tr[batch_idxs]
-        batch_num_edges = self.num_edges_tr[batch_idxs]
-
-        def flatten_data(batch_data, batch_num_data, max_num_data, fill_value, offsets):
-            flattened_data = jnp.full((max_num_data, *batch_data.shape[2:]), fill_value, dtype=batch_data.dtype)
-            data_flattened = 0
-            for i, (graph_data, graph_num_data) in enumerate(zip(batch_data, batch_num_data)):
-                next_data_idx = data_flattened + graph_num_data
-                data_fill = graph_data[:graph_num_data]
-                if offsets is not None:
-                    data_fill = data_fill + offsets[i]
-                flattened_data = flattened_data.at[data_flattened:next_data_idx].set(data_fill)
-
-                data_flattened = next_data_idx
-            return flattened_data
-
-        def flatten_nodes(batch_data):
-            return flatten_data(batch_data, batch_num_nodes, self.max_nodes, 0, None)
-
-        def flatten_edges(batch_data):
-            return flatten_data(batch_data, batch_num_edges, self.max_edges, -1, jnp.cumsum(jnp.concatenate([jnp.array([0]), batch_num_nodes[:-1]])))
-
-        i_nums = flatten_nodes(self.i_tr[batch_idxs])
-        i_batch = jax.nn.one_hot(i_nums, self.num_elements) 
-        x_batch = flatten_nodes(self.x_tr[batch_idxs])
-        edges_batch = flatten_edges(self.edges_tr[batch_idxs])
-        f_batch = flatten_nodes(self.f_tr[batch_idxs])
-        y_batch = jnp.expand_dims(jnp.pad(self.y_tr[batch_idxs], (0, self.max_graphs - len(batch_idxs))), -1)
-        return i_batch, x_batch, edges_batch, f_batch, y_batch, batch_graph_segments
+    Returns:
+      The sum over partitions.
+      """
+    n_partitions = len(partitions)
+    segment_ids = jnp.repeat(jnp.arange(n_partitions), partitions, axis=0, total_repeat_length=sum_partitions)
+    return jax.ops.segment_sum(data, segment_ids, n_partitions, indices_are_sorted=True)
 
 @partial(jax.jit, static_argnums=(0,))
-def get_e_pred(model, params, i, x, edges, graph_segments):
-    e_pred = model.apply(params, i, x, edges, graph_segments)
-    return e_pred
+def get_y_pred(model, params, graph):
+    y_pred = model.apply(params, graph)
+    return y_pred
 
-class SparseSAKEEnergyModel(nn.Module):
-    num_segments: int
+class SAKEEnergyModel(nn.Module):
 
     def setup(self):
         self.model = sake.models.SparseSAKEModel(
@@ -141,37 +105,36 @@ class SparseSAKEEnergyModel(nn.Module):
         self.std = self.variable("coloring", "std", lambda: 1.)
         self.coloring = lambda y: self.std.value * y + self.mean.value
 
-    def __call__(self, i, x, edges, graph_segments):
-        h = self.model(i, x, edges=edges)[0]
-        y = jax.ops.segment_sum(h, graph_segments, self.num_segments)
+    def __call__(self, graph):
+        h = self.model(graph)[0]
+        y = partition_sum(h, graph.n_node, sum(graph.n_node))
         y = self.mlp(y)
         y = self.coloring(y)
         return y
 
 @partial(jax.jit, static_argnums=(0,))
-def get_neg_e_pred_sum(model, params, i, x, edges, graph_segments):
-    e_pred = get_e_pred(model, params, i, x, edges, graph_segments)
-    return -e_pred.sum()
+def get_neg_y_pred_sum(model, params, graph):
+    y_pred = get_y_pred(model, params, graph)
+    return -y_pred.sum()
 
 get_f_pred = jax.jit(jax.grad(get_neg_e_pred_sum, argnums=3), static_argnums=(0,))
 
 
 @partial(jax.jit, static_argnums=(0,))
-def get_y_loss(model, params, i, x, edges, y, graph_segments):
-    e_mask = jnp.expand_dims(jax.ops.segment_sum(jnp.ones_like(graph_segments), graph_segments, num_segments=model.num_segments) > 0, -1)
+def get_y_loss(model, params, graph):
+    y_mask = jraph.get_graph_padding_mask(graph)
     jax.debug.print("Num real graphs: {}", jnp.sum(e_mask))
-    e_pred = get_e_pred(model, params, i, x, edges, graph_segments)
-    e_loss = jnp.abs((e_pred - y) * e_mask).sum()
+    y_pred = get_y_pred(model, params, graph, graph_segments)
+    y_loss = jnp.abs((e_pred - graph.nodes['y']) * e_mask).sum()
     return e_loss
 
 @partial(jax.jit, static_argnums=(0,))
-def get_f_loss(model, params, i, x, edges, f, graph_segments):
-    f_mask = jnp.expand_dims(jnp.array(jnp.not_equal(graph_segments, -1), dtype=int), -1)
-    # num_graphs = jnp.sum(graph_segments != -1)
+def get_f_loss(model, params, graph):
+    f_mask = jraph.get_node_padding_mask(graph)
     jax.debug.print("Num real nodes: {}", jnp.sum(f_mask))
-    jax.debug.print("Num real edge: {}", jnp.sum(edges[:,1] != -1))
-    f_pred = get_f_pred(model, params, i, x, edges, graph_segments)
-    f_loss = jnp.abs((f_pred - f) * f_mask).sum()
+    jax.debug.print("Num real edge: {}", jnp.sum(jraph.get_edge_padding_mask(graph))
+    f_pred = get_f_pred(model, params, graph)
+    f_loss = jnp.abs((f_pred - graph.nodes['f']) * f_mask).sum()
     return f_loss
 
 
