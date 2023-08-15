@@ -26,6 +26,3 @@ def get_x_minus_xt_norm(
 def get_h_cat_ht(graph):
     h = graph.nodes['h']
     return jnp.concatenate([h[graph.senders], h[graph.receivers]], axis=-1)
-
-
-ArrayTree = Union[jnp.ndarray, Iterable['ArrayTree'], Mapping[Any, 'ArrayTree']]
