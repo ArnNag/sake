@@ -54,10 +54,10 @@ class SAKEModel(nn.Module):
         self.layers = [getattr(self, "d%s" % idx) for idx in range(self.depth)]
 
     def __call__(self, graph):
-        graph.nodes['h'] = self.embedding_in(graph.nodes['h'])
+        graph = graph._replace(nodes=graph.nodes.copy({"h": self.embedding_in(graph.nodes['h'])}))
         for layer in self.layers:
             graph = layer(graph)
-        graph['h'] = self.embedding_out(graph.nodes['h'])
+        graph = graph._replace(nodes=graph.nodes.copy({"h": self.embedding_out(graph.nodes['h'])}))
         return graph
 
 
