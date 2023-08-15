@@ -147,7 +147,7 @@ class SAKELayer(nn.Module):
         jax.debug.print("semantic att before softmax: {}", att)
         jax.debug.print("segments: {}", graph.receivers)
         # return shape: (n_edges, n_heads)
-        semantic_attention = jnp.nan_to_num(jraph.segment_softmax(att, graph.receivers, num_segments=graph.n_node))
+        semantic_attention = jnp.nan_to_num(jraph.segment_softmax(att, graph.receivers, num_segments=sum(graph.n_node)))
         return semantic_attention
 
     def combined_attention(self, x_minus_xt_norm, h_e_mtx, graph):
