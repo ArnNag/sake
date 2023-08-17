@@ -113,8 +113,8 @@ class SAKEEnergyModel(nn.Module):
         self.coloring = lambda y: self.std.value * y + self.mean.value
 
     def __call__(self, graph):
-        h = self.model(graph)[0]
-        y = partition_sum(h, graph.n_node, sum(graph.n_node))
+        h = self.model(graph).nodes['h']
+        y = partition_sum(h, graph.n_node, sum_partitions=len(graph.nodes['y']))
         y = self.mlp(y)
         y = self.coloring(y)
         return y
@@ -132,6 +132,7 @@ get_f_pred = jax.jit(jax.grad(get_neg_y_pred_sum, argnums=3), static_argnums=(0,
 
 @partial(jax.jit, static_argnums=(0,))
 def get_y_loss(model, params, graph):
+    print("type(graph.n_node)", type(graph.n_node))
     y_mask = jraph.get_graph_padding_mask(graph)
     jax.debug.print("Num real graphs: {}", jnp.sum(y_mask))
     y_pred = get_y_pred(model, params, graph)
