@@ -31,7 +31,7 @@ def load_data(path, subset=-1):
         graph = jraph.GraphsTuple(
                 n_node=num_nodes[idx],
                 n_edge=num_edges[idx],
-                nodes=frozen_dict.freeze({"i": i[idx, :num_nodes[idx]], "x": x[idx, :num_nodes[idx]], "f": f[idx, :num_nodes[idx]]}),
+                nodes=frozen_dict.freeze({"h": i[idx, :num_nodes[idx]], "x": x[idx, :num_nodes[idx]], "f": f[idx, :num_nodes[idx]]}),
                 senders=edges[idx, :num_edges[idx], 0],
                 receivers=edges[idx, :num_edges[idx], 1],
                 edges=None,
@@ -114,7 +114,7 @@ class SAKEEnergyModel(nn.Module):
 
     def __call__(self, graph):
         h = self.model(graph).nodes['h']
-        y = partition_sum(h, graph.n_node, sum_partitions=len(graph.nodes['y']))
+        y = partition_sum(h, graph.n_node, sum_partitions=len(graph.nodes['x']))
         y = self.mlp(y)
         y = self.coloring(y)
         return y
@@ -132,19 +132,18 @@ get_f_pred = jax.jit(jax.grad(get_neg_y_pred_sum, argnums=3), static_argnums=(0,
 
 @partial(jax.jit, static_argnums=(0,))
 def get_y_loss(model, params, graph):
-    print("type(graph.n_node)", type(graph.n_node))
-    y_mask = jraph.get_graph_padding_mask(graph)
+    y_mask = jnp.expand_dims(jraph.get_graph_padding_mask(graph), axis=-1)
     jax.debug.print("Num real graphs: {}", jnp.sum(y_mask))
     y_pred = get_y_pred(model, params, graph)
-    y_loss = jnp.abs((y_pred - graph.nodes['y']) * y_mask).sum()
+    y_loss = jnp.abs((y_pred - graph.globals) * y_mask).sum()
     return y_loss
 
 
 @partial(jax.jit, static_argnums=(0,))
 def get_f_loss(model, params, graph):
-    f_mask = jraph.get_node_padding_mask(graph)
+    f_mask = jnp.expand_dims(jraph.get_node_padding_mask(graph), axis=-1)
     jax.debug.print("Num real nodes: {}", jnp.sum(f_mask))
     jax.debug.print("Num real edge: {}", jnp.sum(jraph.get_edge_padding_mask(graph)))
-    f_pred = get_f_pred(model, params, graph)
+    f_pred = get_f_pred(model, params, graph, graph.nodes['x'])
     f_loss = jnp.abs((f_pred - graph.nodes['f']) * f_mask).sum()
     return f_loss

@@ -51,10 +51,36 @@ def test_jit_model():
     x = jax.random.normal(key=jax.random.PRNGKey(2666), shape=(5, 3))
     h = jax.random.uniform(key=jax.random.PRNGKey(1984), shape=(5, 16))
     f = jax.random.normal(key=jax.random.PRNGKey(2023), shape=(5, 3))
-    y = jax.random.normal(key=jax.random.PRNGKey(2048), shape=(5, 1))
+    y = jax.random.normal(key=jax.random.PRNGKey(2048), shape=(1, 1))
     edge_idxs = jnp.argwhere(jnp.logical_not(jnp.identity(5)))
-    graph = jraph.GraphsTuple(nodes=frozen_dict.freeze({"x": x, "h": h, "v": None, "f": f, "y": y}), edges=None, senders=edge_idxs[:,0], receivers=edge_idxs[:,1], globals=None, n_node=jnp.array([5]), n_edge=len(edge_idxs))
+    graph = jraph.GraphsTuple(nodes=frozen_dict.freeze({"x": x, "h": h, "v": None, "f": f}), edges=None, senders=edge_idxs[:,0], receivers=edge_idxs[:,1], globals=y, n_node=jnp.array([5]), n_edge=len(edge_idxs))
     init_params = model.init(jax.random.PRNGKey(2046), graph)
     y_pred = get_y_pred(model, init_params, graph)
     assert(y_pred.shape == (1,1))
+
+def test_y_loss():
+    import jax
+    import jax.numpy as jnp
+    import sake
+    import sys
+    import jraph
+    from flax.core import frozen_dict
+    sys.path.append('../../scripts/spice')
+    from utils import SAKEEnergyModel, get_y_loss, get_f_loss
+    model = SAKEEnergyModel()
+    x = jax.random.normal(key=jax.random.PRNGKey(2666), shape=(5, 3))
+    h = jax.random.uniform(key=jax.random.PRNGKey(1984), shape=(5, 16))
+    f = jax.random.normal(key=jax.random.PRNGKey(2023), shape=(5, 3))
+    y = jax.random.normal(key=jax.random.PRNGKey(2048), shape=(1, 1))
+    edge_idxs = jnp.argwhere(jnp.logical_not(jnp.identity(5)))
+    graph = jraph.GraphsTuple(nodes=frozen_dict.freeze({"x": x, "h": h, "v": None, "f": f}), edges=None, senders=edge_idxs[:,0], receivers=edge_idxs[:,1], globals=y, n_node=jnp.array([5]), n_edge=jnp.array([len(edge_idxs)]))
+    graph = jraph.pad_with_graphs(graph, 10, 50)
+    init_params = model.init(jax.random.PRNGKey(2046), graph)
+    y_loss = get_y_loss(model, init_params, graph)
+    print("y_loss:", y_loss)
+    assert(y_loss.shape == ())
+    f_loss = get_f_loss(model, init_params, graph)
+    print("f_loss:", f_loss)
+    assert(f_loss.shape == ())
+
 
