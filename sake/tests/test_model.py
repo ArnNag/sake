@@ -122,7 +122,7 @@ def test_max_nodes_reached():
     import sys
     sys.path.append('../../scripts/spice')
     from utils import make_graph_list, make_batch_loader
-    i_tr = jnp.array([[7, 11, 13, 0, 0], [4, 8, 0, 0, 0]])
+    i_tr = jnp.array([[7, 11, 12, 0, 0], [4, 8, 0, 0, 0]])
     x_tr = i_tr
     f_tr = i_tr
     num_nodes_tr = jnp.array([3, 2])
@@ -138,16 +138,16 @@ def test_max_nodes_reached():
        ]))
     assert jnp.allclose(graph_two.nodes['h'][:3], jnp.array([[0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0.],
        [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0.],
-       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.]
        ]))
     assert jnp.allclose(graph_one.nodes['x'], jnp.array([4., 8., 0., 0.]))
-    assert jnp.allclose(graph_two.nodes['x'], jnp.array([7., 11., 13., 0.]))
+    assert jnp.allclose(graph_two.nodes['x'], jnp.array([7., 11., 12., 0.]))
     assert jnp.allclose(graph_one.senders[:1], jnp.array([0]))
     assert jnp.allclose(graph_one.receivers[:1], jnp.array([1]))
     assert jnp.allclose(graph_two.senders[:2], jnp.array([0, 1]))
     assert jnp.allclose(graph_two.receivers[:2], jnp.array([1, 2]))
     assert jnp.allclose(graph_one.nodes['f'][:2], jnp.array([4., 8.]))
-    assert jnp.allclose(graph_two.nodes['f'][:3], jnp.array([7., 11., 13.]))
+    assert jnp.allclose(graph_two.nodes['f'][:3], jnp.array([7., 11., 12.]))
     assert jnp.allclose(graph_one.globals[0], jnp.array([[17.]]))
     assert jnp.allclose(graph_two.globals[0], jnp.array([[20.]]))
     assert jnp.allclose(graph_one.n_node[0], jnp.array([2]))
@@ -155,3 +155,33 @@ def test_max_nodes_reached():
     assert jnp.allclose(graph_one.n_edge[0], jnp.array([1]))
     assert jnp.allclose(graph_two.n_edge[0], jnp.array([2]))
 
+def test_max_nodes_not_reached():
+    import jax
+    import jax.numpy as jnp
+    import sake
+    import sys
+    sys.path.append('../../scripts/spice')
+    from utils import make_graph_list, make_batch_loader
+    i_tr = jnp.array([[7, 11, 12, 0, 0], [4, 8, 0, 0, 0]])
+    x_tr = i_tr
+    f_tr = i_tr
+    num_nodes_tr = jnp.array([3, 2])
+    edges_tr = jnp.array([[[0, 1], [1, 2], [-1, -1], [-1, -1], [-1, -1]], [[0, 1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]]])
+    num_edges_tr = jnp.array([2, 1])
+    y_tr = jnp.array([[20], [17]])
+    graph_list = make_graph_list(i_tr, x_tr, edges_tr, f_tr, y_tr, num_nodes_tr, num_edges_tr)
+    batch_loader = make_batch_loader(graph_list, seed=1776, max_edges=5, max_nodes=6, max_graphs=3, num_elements=13)
+    graph_one = next(batch_loader)
+    assert jnp.allclose(graph_one.nodes['h'][:5], jnp.array([[0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.]
+       ]))
+    assert jnp.allclose(graph_one.nodes['x'][:5], jnp.array([4., 8., 7., 11., 12.]))
+    assert jnp.allclose(graph_one.senders[:3], jnp.array([0, 2, 3]))
+    assert jnp.allclose(graph_one.receivers[:3], jnp.array([1, 3, 4]))
+    assert jnp.allclose(graph_one.nodes['f'][:5], jnp.array([4., 8., 7., 11., 12.]))
+    assert jnp.allclose(graph_one.globals[:2], jnp.array([[17., 20.]]))
+    assert jnp.allclose(graph_one.n_node[:2], jnp.array([2, 3]))
+    assert jnp.allclose(graph_one.n_edge[:2], jnp.array([1, 2]))
