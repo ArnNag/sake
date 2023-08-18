@@ -14,31 +14,34 @@ ELEMENT_MAP = onp.array([0,  1, -99,  2, -99, -99,  3,  4,  5,  6, -99,  7,  8, 
 NUM_ELEMENTS = 16
 
 
+def make_graph_list(h, x, edge_idxs, f, y, num_nodes, num_edges):
+    def make_graph(idx):
+        graph = jraph.GraphsTuple(
+                n_node=jnp.array([num_nodes[idx]]),
+                n_edge=jnp.array([num_edges[idx]]),
+                nodes=frozen_dict.freeze({"h": h[idx, :num_nodes[idx]], "x": x[idx, :num_nodes[idx]], "f": f[idx, :num_nodes[idx]]}),
+                senders=edge_idxs[idx, :num_edges[idx], 0],
+                receivers=edge_idxs[idx, :num_edges[idx], 1],
+                edges=None,
+                globals=y[idx]
+                )
+        return graph 
+    return [make_graph(idx) for idx in range(len(y))]
+
 def load_data(path, subset=-1):
     ds = onp.load(path)
     i = ELEMENT_MAP[ds["atomic_numbers"]]
     x = ds["pos"]
-    edges = ds["edges"]
+    edge_idxs = ds["edges"]
     f = ds["forces"]
     y = ds["formation_energy"]
     num_nodes = ds["num_nodes"]
     num_edges = ds["num_edges"]
     subset_labels = ds["subsets"]
     if subset >= 0:
-        i, x, edges, f, y, num_nodes, num_edges = select(subset_labels, subset, i, x, edges, f, y, num_nodes, num_edges)
+        i, x, edge_idxs, f, y, num_nodes, num_edges = select(subset_labels, subset, i, x, edge_idxs, f, y, num_nodes, num_edges)
 
-    def make_graph(idx):
-        graph = jraph.GraphsTuple(
-                n_node=num_nodes[idx],
-                n_edge=num_edges[idx],
-                nodes=frozen_dict.freeze({"h": i[idx, :num_nodes[idx]], "x": x[idx, :num_nodes[idx]], "f": f[idx, :num_nodes[idx]]}),
-                senders=edges[idx, :num_edges[idx], 0],
-                receivers=edges[idx, :num_edges[idx], 1],
-                edges=None,
-                globals=y[idx]
-                )
-        return graph 
-    return [make_graph(idx) for idx in range(len(y))], y.mean(), y.std()
+    return make_graph_list(i, x, edge_idxs, f, y, num_nodes, num_edges), y.mean(), y.std()
 
 
 def select(subset_labels, subset, *fields):
@@ -46,13 +49,15 @@ def select(subset_labels, subset, *fields):
     return (field[selection] for field in fields)
 
 
-def make_batch_loader(graph_list, seed, max_nodes, max_edges, max_graphs):
+def make_batch_loader(graph_list, seed, max_nodes, max_edges, max_graphs, num_elements):
     """
     Initialize for every epoch with a unique seed.
     """
     key = jax.random.PRNGKey(seed)
     idxs = jax.random.permutation(key, len(graph_list))
-    yield from jraph.dynamically_batch((graph_list[idx] for idx in idxs), n_node=max_nodes, n_edge=max_edges, n_graph=max_graphs)
+    graph_gen = jraph.dynamically_batch((graph_list[idx] for idx in idxs), n_node=max_nodes, n_edge=max_edges, n_graph=max_graphs)
+    for graph in graph_gen:
+        yield graph._replace(nodes=graph.nodes.copy({"h": jax.nn.one_hot(graph.nodes["h"], num_elements)}))
 
 
 def partition_sum(data: jnp.ndarray,
@@ -84,12 +89,6 @@ def partition_sum(data: jnp.ndarray,
     return jax.ops.segment_sum(data, segment_ids, n_partitions, indices_are_sorted=True)
 
 
-@partial(jax.jit, static_argnums=(0,))
-def get_y_pred(model, params, graph):
-    y_pred = model.apply(params, graph)
-    return y_pred
-
-
 class SAKEEnergyModel(nn.Module):
 
     def setup(self):
@@ -118,6 +117,12 @@ class SAKEEnergyModel(nn.Module):
         y = self.mlp(y)
         y = self.coloring(y)
         return y
+
+
+@partial(jax.jit, static_argnums=(0,))
+def get_y_pred(model, params, graph):
+    y_pred = model.apply(params, graph)
+    return y_pred
 
 
 @partial(jax.jit, static_argnums=(0,))
