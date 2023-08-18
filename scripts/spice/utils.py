@@ -19,7 +19,7 @@ def make_graph_list(h, x, edge_idxs, f, y, num_nodes, num_edges):
         graph = jraph.GraphsTuple(
                 n_node=jnp.array([num_nodes[idx]]),
                 n_edge=jnp.array([num_edges[idx]]),
-                nodes=frozen_dict.freeze({"h": h[idx, :num_nodes[idx]], "x": x[idx, :num_nodes[idx]], "f": f[idx, :num_nodes[idx]]}),
+                nodes=frozen_dict.freeze({"h": h[idx, :num_nodes[idx]], "x": x[idx, :num_nodes[idx]], "v": None, "f": f[idx, :num_nodes[idx]]}),
                 senders=edge_idxs[idx, :num_edges[idx], 0],
                 receivers=edge_idxs[idx, :num_edges[idx], 1],
                 edges=None,
@@ -34,7 +34,7 @@ def load_data(path, subset=-1):
     x = ds["pos"]
     edge_idxs = ds["edges"]
     f = ds["forces"]
-    y = ds["formation_energy"]
+    y = onp.expand_dims(ds["formation_energy"], -1)
     num_nodes = ds["num_nodes"]
     num_edges = ds["num_edges"]
     subset_labels = ds["subsets"]

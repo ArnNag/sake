@@ -116,10 +116,11 @@ class SAKELayer(nn.Module):
         # e: edge axis; x: position axis, c: coefficient axis
         combinations = jnp.einsum("ex,ec->ecx", x_minus_xt, coefficients)
 
+        n_nodes = graph.nodes['x'].shape[0]
         # combinations_sum shape: (n_nodes, hidden_features * n_heads, 3)
         combinations_sum = jraph.segment_mean(combinations,
                                               graph.receivers,
-                                              num_segments=sum(graph.n_node)
+                                              num_segments=n_nodes
                                               )
 
         combinations_norm = (combinations_sum ** 2).sum(-1)  # .pow(0.5)
@@ -129,7 +130,8 @@ class SAKELayer(nn.Module):
 
     @staticmethod
     def aggregate(h_e_mtx, graph):
-        return jax.ops.segment_sum(h_e_mtx, graph.receivers, num_segments=sum(graph.n_node))
+        n_nodes = graph.nodes['x'].shape[0]
+        return jax.ops.segment_sum(h_e_mtx, graph.receivers, num_segments=n_nodes)
 
     def node_model(self, h, h_e, h_combinations):
         out = jnp.concatenate([
@@ -145,15 +147,14 @@ class SAKELayer(nn.Module):
     def semantic_attention(self, h_e_mtx, graph):
         # att shape: (n_edges, n_heads)
         att = self.semantic_attention_mlp(h_e_mtx)
-        jax.debug.print("semantic att before softmax: {}", att)
         # return shape: (n_edges, n_heads)
-        semantic_attention = jnp.nan_to_num(jraph.segment_softmax(att, graph.receivers, num_segments=sum(graph.n_node)))
+        n_nodes = graph.nodes['x'].shape[0]
+        semantic_attention = jnp.nan_to_num(jraph.segment_softmax(att, graph.receivers, num_segments=n_nodes))
         return semantic_attention
 
     def combined_attention(self, x_minus_xt_norm, h_e_mtx, graph):
         # semantic_attention shape: (n_edges, n_heads)
         semantic_attention = self.semantic_attention(h_e_mtx, graph)
-        jax.debug.print("semantic_attention after softmax: {}", semantic_attention)
         if self.cutoff is not None:
             euclidean_attention = self.cutoff(x_minus_xt_norm)
         else:
@@ -161,13 +162,10 @@ class SAKELayer(nn.Module):
 
         # combined_attention shape: (n_edges, n_heads)
         combined_attention = euclidean_attention * semantic_attention
-        jax.debug.print("combined_attention before normalization: {}", combined_attention)
         # combined_attention_agg shape: (n_nodes, n_heads)
-        combined_attention_agg = jax.ops.segment_sum(combined_attention, graph.receivers, num_segments=sum(graph.n_node))
-        jax.debug.print("combined_attention_agg: {}", combined_attention_agg)
-        jax.debug.print("combined_attention_agg[edges[:,1]]: {}", combined_attention_agg[graph.receivers])
+        n_nodes = graph.nodes['x'].shape[0]
+        combined_attention_agg = jax.ops.segment_sum(combined_attention, graph.receivers, num_segments=n_nodes)
         combined_attention = jnp.nan_to_num(combined_attention / combined_attention_agg[graph.receivers])
-        jax.debug.print("combined_attention after normalization: {}", combined_attention)
         
         return combined_attention
 
@@ -208,8 +206,9 @@ class SAKELayer(nn.Module):
 
         if self.update:
             # delta_v shape: (n_edges, hidden_features * n_heads, 3)
-            delta_v = jax.ops.segment_sum(self.v_mixing(delta_v.swapaxes(-1, -2)).squeeze(-1), graph.receivers, num_segments=sum(graph.n_node))
-            delta_v = delta_v / jnp.expand_dims((jax.ops.segment_sum(jnp.ones_like(graph.receivers), graph.receivers, num_segments=sum(graph.n_node)) + 1e-10), -1)
+            n_nodes = graph.nodes['x'].shape[0]
+            delta_v = jax.ops.segment_sum(self.v_mixing(delta_v.swapaxes(-1, -2)).squeeze(-1), graph.receivers, num_segments=n_nodes)
+            delta_v = delta_v / jnp.expand_dims((jax.ops.segment_sum(jnp.ones_like(graph.receivers), graph.receivers, num_segments=n_nodes) + 1e-10), -1)
             # delta_v shape after normalization: (n_edges, 3)
 
             if v is not None:

@@ -1,8 +1,9 @@
 import jax
 import optax
 import flax
-from utils import load_data, make_batch_loader, SAKEEnergyModel, get_y_loss, get_f_loss
+from utils import load_data, make_batch_loader, SAKEEnergyModel, get_y_loss, get_f_loss, NUM_ELEMENTS
 from functools import partial
+from tqdm import tqdm
 
 
 def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0., subset=-1):
@@ -24,15 +25,8 @@ def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0
         state = state.apply_gradients(grads=grads)
         return state
     
-    def epoch(model, state, graph_list):
-        loader = make_batch_loader(graph_list, seed=state.step, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs)
 
-        for graph in loader:
-            state = step_with_loss(model, state, graph)
-
-        return state
-
-    init_loader = list(make_batch_loader(graph_list, seed=0, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs))
+    init_loader = list(make_batch_loader(graph_list, seed=0, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs, num_elements=NUM_ELEMENTS))
     init_graph = init_loader[0]
 
     key = jax.random.PRNGKey(2666)
@@ -42,8 +36,8 @@ def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0
     scheduler = optax.warmup_cosine_decay_schedule(
         init_value=1e-6,
         peak_value=1e-4,
-        warmup_steps=100 * len(graph_list) // len(init_loader),
-        decay_steps=1900 * len(graph_list) // len(init_loader),
+        warmup_steps=100 * len(init_loader),
+        decay_steps=1900 * len(init_loader),
     )
 
     optimizer = optax.chain(
@@ -64,6 +58,14 @@ def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0
     state = TrainState.create(
         apply_fn=model.apply, params=variables, tx=masked_optimizer
     )
+
+    def epoch(model, state, graph_list):
+        loader = make_batch_loader(graph_list, seed=state.step, max_nodes=max_nodes, max_edges=max_edges, max_graphs=max_graphs, num_elements=NUM_ELEMENTS)
+
+        for graph in tqdm(loader, total=len(init_loader)):
+            state = step_with_loss(model, state, graph)
+
+        return state
 
     NUM_EPOCHS = 100
     for epoch_num in range(NUM_EPOCHS):
