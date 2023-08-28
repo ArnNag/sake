@@ -23,8 +23,12 @@ def run(param_path, val_path, max_nodes=7200, max_edges=120000, max_graphs=1000,
         total_f_loss = 0
         total_y_loss = 0
         for graph in batch_loader:
-            total_f_loss += get_f_loss(model, params, graph)
-            total_y_loss += get_y_loss(model, params, graph)
+            f_loss = get_f_loss(model, params, graph)
+            y_loss = get_y_loss(model, params, graph)
+            print("f_loss: ", f_loss)
+            print("y_loss: ", y_loss)
+            total_f_loss += f_loss
+            total_y_loss += y_loss
         return total_f_loss, total_y_loss
 
     from flax.training.checkpoints import restore_checkpoint
@@ -39,6 +43,7 @@ def run(param_path, val_path, max_nodes=7200, max_edges=120000, max_graphs=1000,
             print("checkpoint_path: ", checkpoint_path)
             state = restore_checkpoint(checkpoint_path, None)
             params = state['params']
+            print("params: ", params)
             total_f_loss, total_y_loss = predict(params)
             # jnp.save(os.path.join(save_path, f"{checkpoint}_energies"), y_vl_hat)
             # jnp.save(os.path.join(save_path, f"{checkpoint}_forces"), f_vl_hat)

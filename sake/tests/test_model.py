@@ -185,3 +185,51 @@ def test_max_nodes_not_reached():
     assert jnp.allclose(graph_one.globals[:2], jnp.array([[17., 20.]]))
     assert jnp.allclose(graph_one.n_node[:2], jnp.array([2, 3]))
     assert jnp.allclose(graph_one.n_edge[:2], jnp.array([1, 2]))
+
+def test_same_batched():
+    '''
+    Test that the model produces the same output when the graph is batched vs when it is not batched.
+    '''
+    import jax
+    import jax.numpy as jnp
+    import sake
+    import sys
+    sys.path.append('../../scripts/spice')
+    from utils import make_graph_list, make_batch_loader, get_y_loss, SAKEEnergyModel
+    jax.disable_jit()
+    i_tr = jnp.array([[7, 11, 12, 0, 0], [4, 8, 0, 0, 0]])
+    x_tr = jnp.stack([i_tr, i_tr, i_tr], axis=-1).swapaxes(0, 1)
+    assert(x_tr.shape == (5, 2, 3))
+    f_tr = x_tr
+    num_nodes_tr = jnp.array([3, 2])
+    edges_tr = jnp.array([[[0, 1], [1, 2], [-1, -1], [-1, -1], [-1, -1]], [[0, 1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]]])
+    num_edges_tr = jnp.array([2, 1])
+    y_tr = jnp.array([[20], [17]])
+    graph_list = make_graph_list(i_tr, x_tr, edges_tr, f_tr, y_tr, num_nodes_tr, num_edges_tr)
+    unbatched_max_nodes = 4
+    unbatched_max_edges = 17
+    unbatched_max_graphs = 7
+    unbatched_batch_loader = make_batch_loader(graph_list, seed=1776, max_edges=unbatched_max_edges, max_nodes=unbatched_max_nodes, max_graphs=unbatched_max_graphs, num_elements=13)
+    unbatched_graph_one = next(unbatched_batch_loader)
+    assert(unbatched_graph_one.nodes['x'].shape == (unbatched_max_nodes,3))
+    assert(unbatched_graph_one.nodes['h'].shape == (unbatched_max_nodes,13))
+    assert(unbatched_graph_one.nodes['f'].shape == (unbatched_max_nodes,3))
+    assert(unbatched_graph_one.globals.shape == (unbatched_max_graphs,))
+    unbatched_graph_two = next(unbatched_batch_loader)
+    batched_max_nodes = 23
+    batched_max_edges = 5
+    batched_max_graphs = 3
+    batched_batch_loader = make_batch_loader(graph_list, seed=1776, max_edges=batched_max_edges, max_nodes=batched_max_nodes, max_graphs=batched_max_graphs, num_elements=13)
+    batched_graph = next(batched_batch_loader)
+    assert(batched_graph.nodes['x'].shape == (batched_max_nodes, 3))
+    assert(batched_graph.nodes['h'].shape == (batched_max_nodes, 13))
+    assert(batched_graph.nodes['f'].shape == (batched_max_nodes, 3))
+    assert(batched_graph.globals.shape == (batched_max_graphs,))
+    model = SAKEEnergyModel()
+    init_params = model.init(jax.random.PRNGKey(2046), unbatched_graph_one)
+    print("after init")
+    batched_y_loss = get_y_loss(model, init_params, batched_graph)
+    unbatched_y_loss_one = get_y_loss(model, init_params, unbatched_graph_one)
+    unbatched_y_loss_two = get_y_loss(model, init_params, unbatched_graph_two)
+    assert jnp.allclose(unbatched_y_loss_one + unbatched_y_loss_two, batched_y_loss)
+

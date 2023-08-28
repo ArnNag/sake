@@ -6,7 +6,8 @@ from functools import partial
 from tqdm import tqdm
 
 
-def run(prefix, max_nodes=3600, max_edges=60000, max_graphs=152, e_loss_factor=0., subset=-1):
+def run(prefix, max_nodes=3600, max_edges=29989, max_graphs=152, e_loss_factor=0., subset=-1):
+    jax.config.update("jax_debug_nans", True)
     graph_list, y_mean, y_std = load_data(prefix + "spice_train.npz", subset)
     print("loaded all data")
 

@@ -149,7 +149,8 @@ class SAKELayer(nn.Module):
         att = self.semantic_attention_mlp(h_e_mtx)
         # return shape: (n_edges, n_heads)
         n_nodes = graph.nodes['x'].shape[0]
-        semantic_attention = jnp.nan_to_num(jraph.segment_softmax(att, graph.receivers, num_segments=n_nodes))
+        edge_mask = jnp.expand_dims(jraph.get_edge_padding_mask(graph), axis=-1)
+        semantic_attention = jnp.nan_to_num(jraph.segment_softmax(att - 1e5 * jnp.logical_not(edge_mask), graph.receivers, num_segments=n_nodes))
         return semantic_attention
 
     def combined_attention(self, x_minus_xt_norm, h_e_mtx, graph):
@@ -165,7 +166,7 @@ class SAKELayer(nn.Module):
         # combined_attention_agg shape: (n_nodes, n_heads)
         n_nodes = graph.nodes['x'].shape[0]
         combined_attention_agg = jax.ops.segment_sum(combined_attention, graph.receivers, num_segments=n_nodes)
-        combined_attention = jnp.nan_to_num(combined_attention / combined_attention_agg[graph.receivers])
+        combined_attention = jnp.nan_to_num(combined_attention / (combined_attention_agg[graph.receivers] + 1e-5))
         
         return combined_attention
 
@@ -178,6 +179,7 @@ class SAKELayer(nn.Module):
             graph: jraph.GraphsTuple,
             ) -> jraph.GraphsTuple:
 
+        jax.disable_jit()
         # x_minus_xt shape: (n_edges, 3)
         x_minus_xt = get_x_minus_xt(graph)
         # x_minus_xt norm shape: (n_edges, 1)
@@ -200,6 +202,9 @@ class SAKELayer(nn.Module):
             delta_v = jnp.zeros_like(delta_v)
 
         h_e = self.aggregate(h_e_att, graph)
+        jax.debug.print("graph.nodes['h'].shape: {}", graph.nodes['h'].shape)
+        jax.debug.print("h_e.shape: {}", h_e.shape)
+        jax.debug.print("h_combinations.shape: {}", h_combinations.shape)
         h = self.node_model(graph.nodes['h'], h_e, h_combinations)
         x = graph.nodes['x']
         v = graph.nodes['v']
