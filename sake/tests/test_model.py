@@ -233,26 +233,36 @@ def test_same_batched():
     unbatched_y_loss_two = get_y_loss(model, init_params, unbatched_graph_two)
     assert jnp.allclose(unbatched_y_loss_one + unbatched_y_loss_two, batched_y_loss)
 
-def test_node_feat_shape():
+def test_batched_graph_feat_shapes():
     import jax.numpy as jnp
     import jax
     import jraph
     import jax.tree_util as tree
     n_node_real = 5
-    node_feats = jnp.ones((n_node_real, 3))
-    global_feats = jnp.array([[1]])
+    node_feat_dim = 3
+    node_feats = jnp.ones((n_node_real, node_feat_dim))
+    global_feat_dim = 1
+    global_feats = jnp.ones((1, global_feat_dim))
     edge_idxs = jnp.argwhere(jnp.ones((n_node_real, n_node_real)))
     senders = edge_idxs[:, 0]
     receivers = edge_idxs[:, 1]
     n_edge_real = senders.shape[0]
-    edge_feats = jnp.ones((n_edge_real, 3))
+    edge_feat_dim = 5
+    edge_feats = jnp.ones((n_edge_real, edge_feat_dim))
     graph = jraph.GraphsTuple(nodes=node_feats, edges=edge_feats, receivers=receivers, senders=senders, globals=global_feats, n_node=[n_node_real], n_edge=jnp.array([n_edge_real]))
-    assert graph.nodes.shape == (n_node_real, 3)
+    assert graph.nodes.shape == (n_node_real, node_feat_dim)
+    assert graph.edges.shape == (len(senders), edge_feat_dim)
+    assert graph.globals.shape == (1, global_feat_dim)
 
     graphs = [graph]
 
-    batch_loader = jraph.dynamically_batch(graphs_tuple_iterator=graphs, n_edge=97, n_node=73, n_graph=23)
+    n_edge_batch = 97
+    n_node_batch = 73
+    n_graph_batch = 23
+    batch_loader = jraph.dynamically_batch(graphs_tuple_iterator=graphs, n_edge=n_edge_batch, n_node=n_node_batch, n_graph=n_graph_batch)
     batched_graph = next(batch_loader)
-    assert batched_graph.nodes.shape == (73, 3)
+    assert batched_graph.nodes.shape == (n_node_batch, node_feat_dim)
+    assert batched_graph.edges.shape == (n_edge_batch, edge_feat_dim) 
+    assert batched_graph.globals.shape == (n_graph_batch, global_feat_dim)
 
 
