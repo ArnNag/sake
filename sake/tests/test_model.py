@@ -195,7 +195,7 @@ def test_same_batched():
     import sake
     import sys
     sys.path.append('../../scripts/spice')
-    from utils import make_graph_list, make_batch_loader, get_y_loss, SAKEEnergyModel
+    from utils import make_graph_list, make_batch_loader, get_y_pred, SAKEEnergyModel
     jax.disable_jit()
     i_tr = jnp.array([[7, 11, 12, 0, 0], [4, 8, 0, 0, 0]])
     num_graphs_load = i_tr.shape[0]
@@ -228,12 +228,15 @@ def test_same_batched():
     assert(batched_graph.nodes['f'].shape == (batched_max_nodes, 3))
     assert(batched_graph.globals.shape == (batched_max_graphs,))
     model = SAKEEnergyModel()
-    init_params = model.init(jax.random.PRNGKey(2046), unbatched_graph_one)
+    seed = 2046
+    init_params = model.init(jax.random.PRNGKey(seed), unbatched_graph_one)
+    index = jax.random.permutation(jax.random.PRNGKey(seed), 2)
     print("after init")
-    batched_y_loss = get_y_loss(model, init_params, batched_graph)
-    unbatched_y_loss_one = get_y_loss(model, init_params, unbatched_graph_one)
-    unbatched_y_loss_two = get_y_loss(model, init_params, unbatched_graph_two)
-    assert jnp.allclose(unbatched_y_loss_one + unbatched_y_loss_two, batched_y_loss)
+    batched_y_pred = get_y_pred(model, init_params, batched_graph)
+    unbatched_y_pred_one = get_y_pred(model, init_params, unbatched_graph_one)
+    unbatched_y_pred_two = get_y_pred(model, init_params, unbatched_graph_two)
+    assert jnp.allclose(unbatched_y_pred_one[0], batched_y_pred[index[0]])
+    assert jnp.allclose(unbatched_y_pred_two[0], batched_y_pred[index[1]])
 
 def test_batched_graph_feat_shapes():
     import jax.numpy as jnp
