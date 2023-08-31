@@ -198,14 +198,16 @@ def test_same_batched():
     from utils import make_graph_list, make_batch_loader, get_y_loss, SAKEEnergyModel
     jax.disable_jit()
     i_tr = jnp.array([[7, 11, 12, 0, 0], [4, 8, 0, 0, 0]])
-    x_tr = jnp.stack([i_tr, i_tr, i_tr], axis=-1).swapaxes(0, 1)
-    assert(x_tr.shape == (5, 2, 3))
+    num_graphs_load = i_tr.shape[0]
+    num_nodes_load = i_tr.shape[1]
+    x_tr = jnp.ones((num_graphs_load, num_nodes_load, 3))
     f_tr = x_tr
     num_nodes_tr = jnp.array([3, 2])
     edges_tr = jnp.array([[[0, 1], [1, 2], [-1, -1], [-1, -1], [-1, -1]], [[0, 1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]]])
     num_edges_tr = jnp.array([2, 1])
     y_tr = jnp.array([[20], [17]])
     graph_list = make_graph_list(i_tr, x_tr, edges_tr, f_tr, y_tr, num_nodes_tr, num_edges_tr)
+    assert(graph_list[0].nodes['x'].shape == (num_nodes_tr[0], 3)) 
     unbatched_max_nodes = 4
     unbatched_max_edges = 17
     unbatched_max_graphs = 7
@@ -216,7 +218,7 @@ def test_same_batched():
     assert(unbatched_graph_one.nodes['f'].shape == (unbatched_max_nodes,3))
     assert(unbatched_graph_one.globals.shape == (unbatched_max_graphs,))
     unbatched_graph_two = next(unbatched_batch_loader)
-    batched_max_nodes = 23
+    batched_max_nodes = 27
     batched_max_edges = 5
     batched_max_graphs = 3
     batched_batch_loader = make_batch_loader(graph_list, seed=1776, max_edges=batched_max_edges, max_nodes=batched_max_nodes, max_graphs=batched_max_graphs, num_elements=13)
