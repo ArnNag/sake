@@ -195,12 +195,13 @@ def test_same_batched():
     import sake
     import sys
     sys.path.append('../../scripts/spice')
-    from utils import make_graph_list, make_batch_loader, get_y_pred, SAKEEnergyModel
+    from utils import make_graph_list, make_batch_loader, get_y_pred, get_y_loss, SAKEEnergyModel
     jax.disable_jit()
     i_tr = jnp.array([[7, 11, 12, 0, 0], [4, 8, 0, 0, 0]])
     num_graphs_load = i_tr.shape[0]
     num_nodes_load = i_tr.shape[1]
-    x_tr = jnp.ones((num_graphs_load, num_nodes_load, 3))
+    x_tr_shape = jnp.array([num_graphs_load, num_nodes_load, 3])
+    x_tr = jnp.arange(jnp.prod(x_tr_shape)).reshape(x_tr_shape)
     f_tr = x_tr
     num_nodes_tr = jnp.array([3, 2])
     edges_tr = jnp.array([[[0, 1], [1, 2], [-1, -1], [-1, -1], [-1, -1]], [[0, 1], [-1, -1], [-1, -1], [-1, -1], [-1, -1]]])
@@ -237,6 +238,23 @@ def test_same_batched():
     unbatched_y_pred_two = get_y_pred(model, init_params, unbatched_graph_two)
     assert jnp.allclose(unbatched_y_pred_one[0], batched_y_pred[index[0]])
     assert jnp.allclose(unbatched_y_pred_two[0], batched_y_pred[index[1]])
+
+    print("batched_y_pred:", batched_y_pred)
+    print("batched_graph.globals:", batched_graph.globals)
+    print("unbatched_y_pred_one:", unbatched_y_pred_one)
+    print("unbatched_y_pred_two:", unbatched_y_pred_two)
+    print("unbatched_graph_one.globals:", unbatched_graph_one.globals)
+    print("unbatched_graph_two.globals:", unbatched_graph_two.globals)
+
+
+    print("computing batched_y_loss")
+    batched_y_loss = get_y_loss(model, init_params, batched_graph)
+    print("computing unbatched_y_loss_one")
+    unbatched_y_loss_one = get_y_loss(model, init_params, unbatched_graph_one)
+    print("computing unbatched_y_loss_two")
+    unbatched_y_loss_two = get_y_loss(model, init_params, unbatched_graph_two)
+    total_unbatched_loss = unbatched_y_loss_one + unbatched_y_loss_two
+    assert jnp.allclose(total_unbatched_loss, batched_y_loss)
 
 def test_batched_graph_feat_shapes():
     import jax.numpy as jnp

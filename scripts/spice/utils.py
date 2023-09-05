@@ -15,6 +15,9 @@ NUM_ELEMENTS = 16
 
 
 def make_graph_list(h, x, edge_idxs, f, y, num_nodes, num_edges):
+    """
+    Return a list of jraph.GraphsTuple representing the graphs in the arguments.
+    """
     def make_graph(idx):
         graph = jraph.GraphsTuple(
                 n_node=jnp.array([num_nodes[idx]]),
@@ -26,6 +29,7 @@ def make_graph_list(h, x, edge_idxs, f, y, num_nodes, num_edges):
                 globals=y[idx]
                 )
         return graph 
+
     return [make_graph(idx) for idx in range(len(y))]
 
 def load_data(path, subset=-1):
@@ -137,10 +141,15 @@ get_f_pred = jax.jit(jax.grad(get_neg_y_pred_sum, argnums=3), static_argnums=(0,
 
 @partial(jax.jit, static_argnums=(0,))
 def get_y_loss(model, params, graph):
+    jax.debug.print("Original mask shape: {}", jraph.get_graph_padding_mask(graph).shape)
     y_mask = jnp.expand_dims(jraph.get_graph_padding_mask(graph), axis=-1)
+    jax.debug.print("Expand dims mask shape: {}", y_mask)
     jax.debug.print("Num real graphs: {}", jnp.sum(y_mask))
     y_pred = get_y_pred(model, params, graph)
-    y_loss = jnp.abs((y_pred - graph.globals) * y_mask).sum()
+    jax.debug.print("y_pred inside get_y_loss: {}", y_pred)
+    jax.debug.print("unsummed loss: {}", jnp.abs((y_pred - jnp.expand_dims(graph.globals, -1)) * y_mask))
+    y_loss = jnp.abs((y_pred - jnp.expand_dims(graph.globals, -1)) * y_mask).sum()
+    jax.debug.print("y_loss inside get_y_loss: {}", y_loss)
     return y_loss
 
 
