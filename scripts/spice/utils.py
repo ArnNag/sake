@@ -141,15 +141,9 @@ get_f_pred = jax.jit(jax.grad(get_neg_y_pred_sum, argnums=3), static_argnums=(0,
 
 @partial(jax.jit, static_argnums=(0,))
 def get_y_loss(model, params, graph):
-    jax.debug.print("Original mask shape: {}", jraph.get_graph_padding_mask(graph).shape)
     y_mask = jnp.expand_dims(jraph.get_graph_padding_mask(graph), axis=-1)
-    jax.debug.print("Expand dims mask shape: {}", y_mask)
-    jax.debug.print("Num real graphs: {}", jnp.sum(y_mask))
     y_pred = get_y_pred(model, params, graph)
-    jax.debug.print("y_pred inside get_y_loss: {}", y_pred)
-    jax.debug.print("unsummed loss: {}", jnp.abs((y_pred - jnp.expand_dims(graph.globals, -1)) * y_mask))
     y_loss = jnp.abs((y_pred - jnp.expand_dims(graph.globals, -1)) * y_mask).sum()
-    jax.debug.print("y_loss inside get_y_loss: {}", y_loss)
     return y_loss
 
 
