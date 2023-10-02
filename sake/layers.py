@@ -150,7 +150,8 @@ class SAKELayer(nn.Module):
         # return shape: (n_edges, n_heads)
         n_nodes = graph.nodes['x'].shape[0]
         edge_mask = jnp.expand_dims(jraph.get_edge_padding_mask(graph), axis=-1)
-        semantic_attention = jnp.nan_to_num(jraph.segment_softmax(att - 1e5 * jnp.logical_not(edge_mask), graph.receivers, num_segments=n_nodes))
+        att = att - 1e5 * jnp.logical_not(edge_mask)
+        semantic_attention = jnp.nan_to_num(jraph.segment_softmax(att))
         return semantic_attention
 
     def combined_attention(self, x_minus_xt_norm, h_e_mtx, graph):
@@ -195,6 +196,9 @@ class SAKELayer(nn.Module):
         h_e_att = jnp.einsum("ef,eh->efh", h_e_mtx, combined_attention) 
         h_e_att = jnp.reshape(h_e_att, h_e_att.shape[:-2] + (-1, ))
         # h_e_att shape after reshape: (n_edges,  hidden_features * n_heads)
+        # assert(not jnp.any(jnp.isnan(h_e_att)))
+        # assert(not jnp.any(jnp.isnan(x_minus_xt)))
+        # assert(not jnp.any(jnp.isnan(x_minus_xt_norm)))
         h_combinations, delta_v = self.spatial_attention(h_e_att, x_minus_xt, x_minus_xt_norm, graph)
 
         if not self.use_spatial_attention:
@@ -202,9 +206,6 @@ class SAKELayer(nn.Module):
             delta_v = jnp.zeros_like(delta_v)
 
         h_e = self.aggregate(h_e_att, graph)
-        jax.debug.print("graph.nodes['h'].shape: {}", graph.nodes['h'].shape)
-        jax.debug.print("h_e.shape: {}", h_e.shape)
-        jax.debug.print("h_combinations.shape: {}", h_combinations.shape)
         h = self.node_model(graph.nodes['h'], h_e, h_combinations)
         x = graph.nodes['x']
         v = graph.nodes['v']

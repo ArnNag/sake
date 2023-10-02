@@ -18,9 +18,9 @@ class SPICESerializer:
         self.max_edges = max_edges
         self.SUBSET_MAP = {"SPICE Dipeptides Single Points Dataset v1.2" : 0, "SPICE Solvated Amino Acids Single Points Dataset v1.1" : 1, "SPICE DES370K Single Points Dataset v1.0" : 2, "SPICE DES370K Single Points Dataset Supplement v1.0" : 2, "SPICE DES Monomers Single Points Dataset v1.1" : 3, "SPICE PubChem Set 1 Single Points Dataset v1.2": 4, "SPICE PubChem Set 2 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 3 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 4 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 5 Single Points Dataset v1.2" : 4, "SPICE PubChem Set 6 Single Points Dataset v1.2" : 4, "SPICE Ion Pairs Single Points Dataset v1.1" : 5} 
         self.test_names, self.train_names, self.val_names = self._split(key, train_ratio, test_ratio)
-        self._make_npz(self.train_names, out_prefix + "spice_train")
-        self._make_npz(self.test_names, out_prefix + "spice_test")
-        self._make_npz(self.val_names, out_prefix + "spice_val")
+        self._make_pickle(self.train_names, out_prefix + "spice_train")
+        self._make_pickle(self.test_names, out_prefix + "spice_test")
+        self._make_pickle(self.val_names, out_prefix + "spice_val")
 
     def _split(self, key, train_ratio, test_ratio):
         n_samples = len(self.names)
@@ -32,7 +32,7 @@ class SPICESerializer:
         val_names = [self.names[i] for i in split_idxs[n_test + n_train:]]
         return test_names, train_names, val_names
 
-    def _make_npz(self, names, out_path):
+    def _make_pickle(self, names, out_path):
         all_pos = []
         all_atom_nums = []
         all_form_energies = []

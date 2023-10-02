@@ -232,7 +232,6 @@ def test_same_batched():
     seed = 2046
     init_params = model.init(jax.random.PRNGKey(seed), unbatched_graph_one)
     index = jax.random.permutation(jax.random.PRNGKey(seed), 2)
-    print("after init")
     batched_y_pred = get_y_pred(model, init_params, batched_graph)
     unbatched_y_pred_one = get_y_pred(model, init_params, unbatched_graph_one)
     unbatched_y_pred_two = get_y_pred(model, init_params, unbatched_graph_two)
