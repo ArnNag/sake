@@ -8,7 +8,7 @@ INF = 1e5
 
 def get_x_minus_xt(graph):
     x = graph.nodes['x']
-    return x[graph.receivers] - x[graph.senders]  # shape: (n_nodes, 3)
+    return x[graph.receivers] - x[graph.senders]  # shape: (n_edges, 3)
 
 
 def get_x_minus_xt_norm(
