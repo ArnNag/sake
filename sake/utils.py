@@ -27,7 +27,7 @@ def cosine_cutoff(x, lower=0.0, upper=5.0):
 
 class ExpNormalSmearing(nn.Module):
     cutoff_lower: float = 0.0
-    cutoff_upper: float = 5.0
+    cutoff_upper: float = 0.5
     num_rbf: float = 50
 
     def setup(self):
@@ -49,7 +49,7 @@ class ExpNormalSmearing(nn.Module):
         # initialize means and betas according to the default values in PhysNet
         # https://pubs.acs.org/doi/10.1021/acs.jctc.9b00181
         start_value = jnp.exp(
-            -self.cutoff_upper + self.cutoff_lower
+            (-self.cutoff_upper + self.cutoff_lower) * 10  # NOTE: converting nanometer to angstrom
         )
         means = jnp.linspace(start_value, 1, self.num_rbf)
         betas = jnp.array(
@@ -60,7 +60,7 @@ class ExpNormalSmearing(nn.Module):
     def __call__(self, dist):
         return jnp.exp(
             -self.betas
-            * (jnp.exp((-dist + self.cutoff_lower)) - self.means) ** 2
+            * (jnp.exp((-dist + self.cutoff_lower) * 10) - self.means) ** 2  # NOTE: converting nanometer to angstrom
         )
 
 @jax.jit
