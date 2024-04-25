@@ -31,7 +31,6 @@ class ExpNormalSmearing(nn.Module):
     num_rbf: float = 50
 
     def setup(self):
-        self.alpha = 5.0 / (self.cutoff_upper - self.cutoff_lower)
         means, betas = self._initial_params()
         self.out_features = self.num_rbf
         self.means = self.param(
@@ -61,7 +60,7 @@ class ExpNormalSmearing(nn.Module):
     def __call__(self, dist):
         return jnp.exp(
             -self.betas
-            * (jnp.exp(self.alpha * (-dist + self.cutoff_lower)) - self.means) ** 2
+            * (jnp.exp((-dist + self.cutoff_lower)) - self.means) ** 2
         )
 
 @jax.jit
